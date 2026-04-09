@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import JsBarcode from "jsbarcode";
 
 const API =
   import.meta.env.VITE_API_URL ||
@@ -43,6 +44,23 @@ export default function App() {
       })
     );
   }
+
+  function Barcode({ value }) {
+  const ref = useRef();
+
+  useEffect(() => {
+    if (ref.current) {
+      JsBarcode(ref.current, value, {
+        format: "CODE128",
+        width: 2,
+        height: 60,
+        displayValue: true,
+      });
+    }
+  }, [value]);
+
+  return <svg ref={ref}></svg>;
+}
 
   function clearDraftFromLocalStorage() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -786,6 +804,7 @@ export default function App() {
                   <div className="summary-lines">
                     <div><strong>Readable ID:</strong> {selectedItem["Readable ID"]}</div>
                     <div><strong>Barcode:</strong> {selectedItem.Barcode}</div>
+                    <Barcode value={selectedItem.Barcode} />
                     <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
                     <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
                   </div>
