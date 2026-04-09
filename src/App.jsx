@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import "./App.css";
 
 const API =
+  import.meta.env.VITE_API_URL ||
   "https://script.google.com/macros/s/AKfycbwIxLeglf9YlAPQ9fhga_jF15ZbIcdU4gvKhQfwI1qrwuTf5SwxMXYy1Wa8by9-kXnC/exec";
 
 const LOCAL_STORAGE_KEY = "inventoryTrackerDraftData_v1";
@@ -25,6 +27,7 @@ export default function App() {
   const [publishing, setPublishing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasLoadedLocalDraft, setHasLoadedLocalDraft] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   function saveDraftToLocalStorage(inventory) {
     localStorage.setItem(
@@ -207,6 +210,28 @@ export default function App() {
     };
   }, [workingInventory, savedInventory]);
 
+  const filteredInventory = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    if (!term) return workingInventory;
+
+    return workingInventory.filter((item) => {
+      return [
+        item["Item Name"],
+        item["Readable ID"],
+        item["Barcode"],
+        item["Category Name"],
+        item["Location Name"],
+        item["Status"],
+        item["Condition"],
+        item["Notes"],
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [workingInventory, searchTerm]);
+
   const selectedItem = useMemo(() => {
     return workingInventory.find((item) => item.localId === selectedItemId) || null;
   }, [workingInventory, selectedItemId]);
@@ -237,7 +262,7 @@ export default function App() {
     const count = Number(quantity);
 
     if (!Number.isInteger(count) || count < 1) {
-      alert("Quantity must be a whole number of 1 or more.");
+      alert("Number of items must be a whole number of 1 or more.");
       return;
     }
 
@@ -411,87 +436,59 @@ export default function App() {
   }
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        fontFamily: "Arial, sans-serif",
-        maxWidth: "1200px",
-        margin: "0 auto",
-        backgroundColor: "#f4f4f4",
-        minHeight: "100vh",
-      }}
-    >
-      <h1 style={{ marginBottom: "8px" }}>Inventory Tracker</h1>
-      <p style={{ marginTop: 0, color: "#555" }}>
-        Local draft mode enabled. Changes are saved in your browser until you publish them.
-      </p>
-
-      {errorMessage && (
-        <div
-          style={{
-            marginBottom: "20px",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            backgroundColor: "#ffe5e5",
-            color: "#8a1f1f",
-            border: "1px solid #f0b3b3",
-          }}
-        >
-          {errorMessage}
-        </div>
-      )}
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "360px 1fr",
-          gap: "20px",
-          alignItems: "start",
-        }}
-      >
+    <div className="app-shell">
+      <header className="topbar">
         <div>
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "12px",
-              padding: "20px",
-              marginBottom: "20px",
-              backgroundColor: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Add Item Locally</h2>
+          <p className="eyebrow">Allen County AV Inventory</p>
+          <h1>Inventory Tracker</h1>
+          <p className="subtext">
+            Local draft mode is enabled. Changes stay in your browser until you publish them.
+          </p>
+        </div>
 
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                Item Name
-              </label>
+        <div className="topbar-actions">
+          <div className="stat-pill">
+            <span className="stat-pill-label">New</span>
+            <span className="stat-pill-value">{pendingSummary.added}</span>
+          </div>
+          <div className="stat-pill">
+            <span className="stat-pill-label">Edited</span>
+            <span className="stat-pill-value">{pendingSummary.edited}</span>
+          </div>
+          <button
+            className="button button-primary"
+            onClick={publishChanges}
+            disabled={publishing || pendingSummary.total === 0}
+          >
+            {publishing ? "Publishing..." : "Publish Changes"}
+          </button>
+        </div>
+      </header>
+
+      {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
+
+      <div className="dashboard-grid">
+        <aside className="sidebar">
+          <section className="panel">
+            <div className="panel-header">
+              <h2>Add Items</h2>
+              <p>Create individually tracked assets with unique serials.</p>
+            </div>
+
+            <div className="form-group">
+              <label>Item Name</label>
               <input
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #ccc",
-                  boxSizing: "border-box",
-                }}
-                placeholder="Item name"
+                className="input"
+                placeholder="Shure ULXD4 Receiver"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
 
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                Category
-              </label>
+            <div className="form-group">
+              <label>Category</label>
               <select
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #ccc",
-                  boxSizing: "border-box",
-                }}
+                className="input"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 disabled={loadingApp}
@@ -505,18 +502,10 @@ export default function App() {
               </select>
             </div>
 
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                Location
-              </label>
+            <div className="form-group">
+              <label>Location</label>
               <select
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #ccc",
-                  boxSizing: "border-box",
-                }}
+                className="input"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 disabled={loadingApp}
@@ -530,18 +519,10 @@ export default function App() {
               </select>
             </div>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                Number of Items to Create
-              </label>
+            <div className="form-group">
+              <label>Number of Items to Create</label>
               <input
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "1px solid #ccc",
-                  boxSizing: "border-box",
-                }}
+                className="input"
                 type="number"
                 min="1"
                 step="1"
@@ -550,246 +531,173 @@ export default function App() {
               />
             </div>
 
-            <button
-              onClick={addItemLocally}
-              disabled={loadingApp}
-              style={{
-                padding: "10px 16px",
-                border: "none",
-                borderRadius: "8px",
-                backgroundColor: "#111",
-                color: "white",
-                cursor: loadingApp ? "not-allowed" : "pointer",
-                width: "100%",
-              }}
-            >
+            <button className="button button-dark button-full" onClick={addItemLocally} disabled={loadingApp}>
               Add Locally
             </button>
-          </div>
+          </section>
 
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "12px",
-              padding: "20px",
-              backgroundColor: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Unpublished Changes</h2>
-            <div style={{ marginBottom: "8px" }}>
-              <strong>New items:</strong> {pendingSummary.added}
+          <section className="panel">
+            <div className="panel-header">
+              <h2>Unpublished Changes</h2>
+              <p>Keep working quickly, then push everything at once.</p>
             </div>
-            <div style={{ marginBottom: "16px" }}>
-              <strong>Edited items:</strong> {pendingSummary.edited}
+
+            <div className="summary-grid">
+              <div className="summary-card">
+                <span className="summary-label">New Items</span>
+                <span className="summary-value">{pendingSummary.added}</span>
+              </div>
+              <div className="summary-card">
+                <span className="summary-label">Edited Items</span>
+                <span className="summary-value">{pendingSummary.edited}</span>
+              </div>
             </div>
 
             <button
+              className="button button-primary button-full"
               onClick={publishChanges}
               disabled={publishing || pendingSummary.total === 0}
-              style={{
-                padding: "10px 16px",
-                border: "none",
-                borderRadius: "8px",
-                backgroundColor:
-                  publishing || pendingSummary.total === 0 ? "#777" : "#0b6e4f",
-                color: "white",
-                cursor:
-                  publishing || pendingSummary.total === 0 ? "not-allowed" : "pointer",
-                width: "100%",
-                marginBottom: "10px",
-              }}
             >
               {publishing ? "Publishing..." : "Publish Changes"}
             </button>
 
             <button
+              className="button button-secondary button-full"
               onClick={discardLocalChanges}
               disabled={publishing || pendingSummary.total === 0}
-              style={{
-                padding: "10px 16px",
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-                backgroundColor: "white",
-                color: "#111",
-                cursor:
-                  publishing || pendingSummary.total === 0 ? "not-allowed" : "pointer",
-                width: "100%",
-              }}
             >
               Discard Local Changes
             </button>
-          </div>
-        </div>
+          </section>
+        </aside>
 
-        <div>
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "12px",
-              padding: "20px",
-              marginBottom: "20px",
-              backgroundColor: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Inventory</h2>
+        <main className="main-content">
+          <section className="panel">
+            <div className="inventory-header">
+              <div>
+                <h2>Inventory</h2>
+                <p>Search and select an item to edit locally.</p>
+              </div>
+
+              <input
+                className="input search-input"
+                placeholder="Search items, IDs, barcodes, notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
             {loadingApp ? (
-              <p>Loading inventory...</p>
-            ) : workingInventory.length === 0 ? (
-              <p>No inventory found.</p>
+              <div className="empty-state">Loading inventory...</div>
+            ) : filteredInventory.length === 0 ? (
+              <div className="empty-state">No inventory matched your search.</div>
             ) : (
-              workingInventory.map((item) => (
-                <div
-                  key={item.localId}
-                  onClick={() => setSelectedItemId(item.localId)}
-                  style={{
-                    border: selectedItemId === item.localId ? "2px solid #111" : "1px solid #ddd",
-                    borderRadius: "10px",
-                    marginBottom: "12px",
-                    padding: "14px",
-                    backgroundColor: item.isLocalOnly ? "#eefaf5" : "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                    <div>
-                      <div style={{ fontWeight: "bold", fontSize: "17px" }}>
-                        {item["Item Name"]}
-                      </div>
-                      <div style={{ marginTop: "6px" }}>
-                        <strong>Readable ID:</strong> {item["Readable ID"]}
-                      </div>
+              <div className="inventory-list">
+                {filteredInventory.map((item) => (
+                  <button
+                    key={item.localId}
+                    className={`inventory-card ${selectedItemId === item.localId ? "selected" : ""} ${
+                      item.isLocalOnly ? "new-item" : ""
+                    }`}
+                    onClick={() => setSelectedItemId(item.localId)}
+                  >
+                    <div className="inventory-card-top">
                       <div>
-                        <strong>Barcode:</strong> {item.Barcode}
-                      </div>
-                      <div>
-                        <strong>Category:</strong> {item["Category Name"]}
-                      </div>
-                      <div>
-                        <strong>Location:</strong> {item["Location Name"]}
-                      </div>
-                      <div>
-                        <strong>Status:</strong> {item.Status}
-                      </div>
-                    </div>
-
-                    <div>
-                      {item.isLocalOnly && (
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            padding: "6px 8px",
-                            borderRadius: "999px",
-                            backgroundColor: "#d9f5e8",
-                            color: "#0b6e4f",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          NEW
+                        <h3>{item["Item Name"]}</h3>
+                        <div className="meta-row">
+                          <span className="badge badge-id">{item["Readable ID"]}</span>
+                          <span className="badge badge-barcode">{item.Barcode}</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                      </div>
 
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "12px",
-              padding: "20px",
-              backgroundColor: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Edit Selected Item Locally</h2>
+                      <div className="inventory-card-right">
+                        {item.isLocalOnly && <span className="badge badge-new">NEW</span>}
+                        <span className={`badge badge-status status-${String(item.Status || "").toLowerCase()}`}>
+                          {item.Status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="detail-grid">
+                      <div>
+                        <span className="detail-label">Category</span>
+                        <span className="detail-value">{item["Category Name"]}</span>
+                      </div>
+                      <div>
+                        <span className="detail-label">Location</span>
+                        <span className="detail-value">{item["Location Name"]}</span>
+                      </div>
+                      <div>
+                        <span className="detail-label">Condition</span>
+                        <span className="detail-value">{item.Condition || "—"}</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <h2>Edit Selected Item</h2>
+              <p>Changes stay local until you publish.</p>
+            </div>
 
             {!selectedItem ? (
-              <p>Select an item from the list.</p>
+              <div className="empty-state">Select an item from the inventory list.</div>
             ) : (
-              <>
-                <div style={{ marginBottom: "12px" }}>
-                  <strong>{selectedItem["Item Name"]}</strong>
+              <div className="editor-layout">
+                <div className="selected-item-summary">
+                  <h3>{selectedItem["Item Name"]}</h3>
+                  <div className="summary-lines">
+                    <div><strong>Readable ID:</strong> {selectedItem["Readable ID"]}</div>
+                    <div><strong>Barcode:</strong> {selectedItem.Barcode}</div>
+                    <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
+                    <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
+                  </div>
                 </div>
 
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                    Status
-                  </label>
-                  <select
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      boxSizing: "border-box",
-                    }}
-                    value={editingStatus}
-                    onChange={(e) => setEditingStatus(e.target.value)}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Missing">Missing</option>
-                    <option value="Retired">Retired</option>
-                  </select>
-                </div>
+                <div className="editor-fields">
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select
+                      className="input"
+                      value={editingStatus}
+                      onChange={(e) => setEditingStatus(e.target.value)}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Missing">Missing</option>
+                      <option value="Retired">Retired</option>
+                    </select>
+                  </div>
 
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                    Condition
-                  </label>
-                  <input
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      boxSizing: "border-box",
-                    }}
-                    value={editingCondition}
-                    onChange={(e) => setEditingCondition(e.target.value)}
-                  />
-                </div>
+                  <div className="form-group">
+                    <label>Condition</label>
+                    <input
+                      className="input"
+                      value={editingCondition}
+                      onChange={(e) => setEditingCondition(e.target.value)}
+                    />
+                  </div>
 
-                <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "bold" }}>
-                    Notes
-                  </label>
-                  <textarea
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid #ccc",
-                      boxSizing: "border-box",
-                      minHeight: "100px",
-                      resize: "vertical",
-                    }}
-                    value={editingNotes}
-                    onChange={(e) => setEditingNotes(e.target.value)}
-                  />
-                </div>
+                  <div className="form-group">
+                    <label>Notes</label>
+                    <textarea
+                      className="input textarea"
+                      value={editingNotes}
+                      onChange={(e) => setEditingNotes(e.target.value)}
+                    />
+                  </div>
 
-                <button
-                  onClick={updateSelectedItemLocally}
-                  style={{
-                    padding: "10px 16px",
-                    border: "none",
-                    borderRadius: "8px",
-                    backgroundColor: "#111",
-                    color: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  Save Local Edit
-                </button>
-              </>
+                  <button className="button button-dark" onClick={updateSelectedItemLocally}>
+                    Save Local Edit
+                  </button>
+                </div>
+              </div>
             )}
-          </div>
-        </div>
+          </section>
+        </main>
       </div>
     </div>
   );
