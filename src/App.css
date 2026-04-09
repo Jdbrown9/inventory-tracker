@@ -27,12 +27,6 @@ body {
   overflow-y: auto;
 }
 
-.header-logo {
-  height: 48px;
-  width: auto;
-  object-fit: contain;
-}
-
 button,
 input,
 select,
@@ -102,11 +96,11 @@ button {
   color: rgba(255, 255, 255, 0.74);
 }
 
-.brand-banner h1 {
-  margin: 0;
-  font-size: 42px;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+.header-logo {
+  display: block;
+  height: 64px;
+  width: auto;
+  object-fit: contain;
 }
 
 .subtext {
@@ -380,8 +374,20 @@ button {
   color: #66748f;
 }
 
+.inventory-tools {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  width: min(100%, 640px);
+}
+
 .search-input {
-  max-width: 420px;
+  flex: 1 1 auto;
+  max-width: none;
+}
+
+.scan-button {
+  white-space: nowrap;
 }
 
 .inventory-scroll {
@@ -580,6 +586,79 @@ button {
   margin-bottom: 4px;
 }
 
+.scanner-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 17, 31, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.scanner-modal {
+  width: min(100%, 760px);
+  max-height: min(90vh, 900px);
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 26px;
+  padding: 28px;
+  box-shadow: 0 28px 60px rgba(9, 17, 31, 0.35);
+}
+
+.scanner-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.scanner-modal-header h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: #13263f;
+}
+
+.scanner-modal-header p {
+  margin: 0;
+  color: #66748f;
+}
+
+.scanner-close {
+  flex: 0 0 auto;
+}
+
+.scanner-alert {
+  margin: 0 0 16px;
+}
+
+.scanner-reader {
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid #dce6f4;
+  background: #f7fafc;
+}
+
+.scanner-reader video {
+  border-radius: 20px;
+}
+
+.scanner-status-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.scanner-status {
+  color: #50617e;
+  font-weight: 600;
+}
+
 @media (max-width: 1100px) {
   .brand-banner-top {
     flex-direction: column;
@@ -620,11 +699,13 @@ button {
     padding: 22px 20px 18px;
   }
 
-  .brand-banner h1 {
-    font-size: 32px;
+  .header-logo {
+    height: 52px;
   }
 
-  .inventory-header {
+  .inventory-header,
+  .inventory-tools,
+  .scanner-modal-header {
     flex-direction: column;
   }
 
@@ -646,6 +727,10 @@ button {
 
   .summary-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .scanner-modal {
+    padding: 20px;
   }
 }
 
@@ -671,5 +756,9 @@ button {
   .brand-nav-item {
     width: 100%;
     justify-content: center;
+  }
+
+  .scanner-modal-overlay {
+    padding: 12px;
   }
 }

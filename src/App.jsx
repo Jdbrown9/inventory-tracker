@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 const API =
@@ -28,6 +28,11 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasLoadedLocalDraft, setHasLoadedLocalDraft] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerError, setScannerError] = useState("");
+  const [scannerStatus, setScannerStatus] = useState("Ready to scan.");
+  const scannerRef = useRef(null);
 
   function saveDraftToLocalStorage(inventory) {
     localStorage.setItem(
@@ -248,6 +253,111 @@ export default function App() {
     }
   }, [selectedItem]);
 
+  useEffect(() => {
+    if (!scannerOpen) return undefined;
+
+    if (!window.isSecureContext) {
+      setScannerError("Camera scanning requires HTTPS or localhost.");
+      setScannerStatus("");
+      return undefined;
+    }
+
+    let isMounted = true;
+    let html5QrcodeInstance = null;
+
+    async function startScanner() {
+      try {
+        setScannerError("");
+        setScannerStatus("Starting camera...");
+
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (!isMounted) return;
+
+        html5QrcodeInstance = new Html5Qrcode("scanner-reader");
+        scannerRef.current = html5QrcodeInstance;
+
+        await html5QrcodeInstance.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 260, height: 130 },
+            aspectRatio: 1.7778,
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+          },
+          (decodedText) => {
+            if (!isMounted) return;
+
+            const cleanValue = String(decodedText || "").trim();
+            setSearchTerm(cleanValue);
+
+            const exactMatch = workingInventory.find((item) => {
+              return (
+                String(item.Barcode || "").trim().toLowerCase() === cleanValue.toLowerCase() ||
+                String(item["Readable ID"] || "").trim().toLowerCase() === cleanValue.toLowerCase()
+              );
+            });
+
+            if (exactMatch) {
+              setSelectedItemId(exactMatch.localId);
+              setScannerStatus(`Found ${exactMatch["Item Name"]}.`);
+            } else {
+              setScannerStatus(`Scanned ${cleanValue}. No exact inventory match found yet.`);
+            }
+
+            setScannerOpen(false);
+          },
+          () => {}
+        );
+
+        if (isMounted) {
+          setScannerStatus("Point your camera at a barcode.");
+        }
+      } catch (error) {
+        console.error("Scanner failed to start:", error);
+        if (isMounted) {
+          setScannerError(
+            "Unable to start the camera scanner. Check camera permissions and try again."
+          );
+          setScannerStatus("");
+        }
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      isMounted = false;
+
+      async function cleanupScanner() {
+        const scanner = scannerRef.current || html5QrcodeInstance;
+        if (!scanner) return;
+
+        try {
+          const state = scanner.getState?.();
+          if (state === 2 || state === 3) {
+            await scanner.stop();
+          }
+        } catch (error) {
+          console.warn("Scanner stop warning:", error);
+        }
+
+        try {
+          await scanner.clear();
+        } catch (error) {
+          console.warn("Scanner clear warning:", error);
+        }
+
+        if (scannerRef.current === scanner) {
+          scannerRef.current = null;
+        }
+      }
+
+      cleanupScanner();
+    };
+  }, [scannerOpen, workingInventory]);
+
   function addItemLocally() {
     if (!name.trim()) {
       alert("Please enter an item name.");
@@ -440,12 +550,12 @@ export default function App() {
       <header className="brand-banner">
         <div className="brand-banner-top">
           <div>
-            <p className="eyebrow">AV Department</p>
-            <img 
+            <p className="eyebrow">Allen County War Memorial Coliseum</p>
+            <img
               src={`${import.meta.env.BASE_URL}assets/header_logo.svg`}
-                alt="Allen County War Memorial Coliseum"
-                className="header-logo"
-            />  
+              alt="Allen County War Memorial Coliseum"
+              className="header-logo"
+            />
             <p className="subtext">
               Internal equipment tracking for the Allen County War Memorial Coliseum AV Department.
             </p>
@@ -591,15 +701,20 @@ export default function App() {
               <div>
                 <p className="panel-kicker">Equipment Inventory</p>
                 <h2>AV Asset Inventory</h2>
-                <p>Search and select an item to edit locally.</p>
+                <p>Search, scan, and select an item to edit locally.</p>
               </div>
 
-              <input
-                className="input search-input"
-                placeholder="Search items, IDs, barcodes, notes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <div className="inventory-tools">
+                <input
+                  className="input search-input"
+                  placeholder="Search items, IDs, barcodes, notes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button className="button button-dark scan-button" onClick={() => setScannerOpen(true)}>
+                  Scan Barcode
+                </button>
+              </div>
             </div>
 
             <div className="inventory-scroll">
@@ -728,6 +843,32 @@ export default function App() {
           <span>260-482-9502</span>
         </div>
       </footer>
+
+      {scannerOpen && (
+        <div className="scanner-modal-overlay" onClick={() => setScannerOpen(false)}>
+          <div className="scanner-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scanner-modal-header">
+              <div>
+                <p className="panel-kicker">Barcode Scanner</p>
+                <h2>Scan Inventory Barcode</h2>
+                <p>Use your phone camera to scan a barcode and jump directly to the asset.</p>
+              </div>
+
+              <button className="button button-secondary scanner-close" onClick={() => setScannerOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            {scannerError ? <div className="alert alert-error scanner-alert">{scannerError}</div> : null}
+
+            <div id="scanner-reader" className="scanner-reader"></div>
+
+            <div className="scanner-status-row">
+              <span className="scanner-status">{scannerStatus}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
