@@ -572,7 +572,7 @@ export default function App() {
         </aside>
 
         <main className="main-content">
-          <section className="panel">
+          <section className="panel inventory-panel">
             <div className="inventory-header">
               <div>
                 <h2>Inventory</h2>
@@ -587,55 +587,57 @@ export default function App() {
               />
             </div>
 
-            {loadingApp ? (
-              <div className="empty-state">Loading inventory...</div>
-            ) : filteredInventory.length === 0 ? (
-              <div className="empty-state">No inventory matched your search.</div>
-            ) : (
-              <div className="inventory-list">
-                {filteredInventory.map((item) => (
-                  <button
-                    key={item.localId}
-                    className={`inventory-card ${selectedItemId === item.localId ? "selected" : ""} ${
-                      item.isLocalOnly ? "new-item" : ""
-                    }`}
-                    onClick={() => setSelectedItemId(item.localId)}
-                  >
-                    <div className="inventory-card-top">
-                      <div>
-                        <h3>{item["Item Name"]}</h3>
-                        <div className="meta-row">
-                          <span className="badge badge-id">{item["Readable ID"]}</span>
-                          <span className="badge badge-barcode">{item.Barcode}</span>
+            <div className="inventory-scroll">
+              {loadingApp ? (
+                <div className="empty-state">Loading inventory...</div>
+              ) : filteredInventory.length === 0 ? (
+                <div className="empty-state">No inventory matched your search.</div>
+              ) : (
+                <div className="inventory-list">
+                  {filteredInventory.map((item) => (
+                    <button
+                      key={item.localId}
+                      className={`inventory-card ${selectedItemId === item.localId ? "selected" : ""} ${
+                        item.isLocalOnly ? "new-item" : ""
+                      }`}
+                      onClick={() => setSelectedItemId(item.localId)}
+                    >
+                      <div className="inventory-card-top">
+                        <div>
+                          <h3>{item["Item Name"]}</h3>
+                          <div className="meta-row">
+                            <span className="badge badge-id">{item["Readable ID"]}</span>
+                            <span className="badge badge-barcode">{item.Barcode}</span>
+                          </div>
+                        </div>
+
+                        <div className="inventory-card-right">
+                          {item.isLocalOnly && <span className="badge badge-new">NEW</span>}
+                          <span className={`badge badge-status status-${String(item.Status || "").toLowerCase()}`}>
+                            {item.Status}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="inventory-card-right">
-                        {item.isLocalOnly && <span className="badge badge-new">NEW</span>}
-                        <span className={`badge badge-status status-${String(item.Status || "").toLowerCase()}`}>
-                          {item.Status}
-                        </span>
+                      <div className="detail-grid">
+                        <div>
+                          <span className="detail-label">Category</span>
+                          <span className="detail-value">{item["Category Name"]}</span>
+                        </div>
+                        <div>
+                          <span className="detail-label">Location</span>
+                          <span className="detail-value">{item["Location Name"]}</span>
+                        </div>
+                        <div>
+                          <span className="detail-label">Condition</span>
+                          <span className="detail-value">{item.Condition || "—"}</span>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="detail-grid">
-                      <div>
-                        <span className="detail-label">Category</span>
-                        <span className="detail-value">{item["Category Name"]}</span>
-                      </div>
-                      <div>
-                        <span className="detail-label">Location</span>
-                        <span className="detail-value">{item["Location Name"]}</span>
-                      </div>
-                      <div>
-                        <span className="detail-label">Condition</span>
-                        <span className="detail-value">{item.Condition || "—"}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="panel">
