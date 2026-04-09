@@ -38,9 +38,10 @@ button {
 }
 
 .app-shell {
-  max-width: 1480px;
+  max-width: none;
+  width:100%;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 32px;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -191,7 +192,7 @@ button {
 .main-content {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 28px;
   min-height: 0;
 }
 
@@ -365,7 +366,7 @@ button {
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   flex: 0 0 auto;
 }
 
@@ -393,7 +394,7 @@ button {
 
 .inventory-list {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .inventory-card {
@@ -404,7 +405,7 @@ button {
     #fcfdff;
   border: 1px solid #dbe4f0;
   border-radius: 20px;
-  padding: 18px;
+  padding: 22px;
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -692,4 +693,7 @@ button {
     width: 100%;
     justify-content: center;
   }
+  .main-content > .panel:last-child {
+  flex: 0 0 260px;
+}
 }
