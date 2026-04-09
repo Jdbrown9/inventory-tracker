@@ -532,7 +532,7 @@ export default function App() {
             </div>
 
             <button className="button button-dark button-full" onClick={addItemLocally} disabled={loadingApp}>
-              Add Locally
+              Add Items
             </button>
           </section>
 
