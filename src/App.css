@@ -9,7 +9,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 * {
@@ -23,7 +23,8 @@ body {
     radial-gradient(circle at top right, rgba(201, 168, 102, 0.12), transparent 28%),
     linear-gradient(180deg, #eef2f7 0%, #e6ecf4 100%);
   color: #172033;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button,
@@ -41,11 +42,18 @@ button {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 20px 0 28px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.brand-banner,
+.dashboard-grid,
+.site-footer {
+  margin-left: 24px;
+  margin-right: 24px;
 }
 
 .brand-banner {
@@ -58,7 +66,6 @@ button {
     linear-gradient(135deg, rgba(196, 158, 89, 0.28), rgba(196, 158, 89, 0) 35%),
     linear-gradient(135deg, #10233f 0%, #16345e 55%, #0f213b 100%);
   box-shadow: 0 24px 52px rgba(16, 35, 63, 0.28);
-  flex: 0 0 auto;
 }
 
 .brand-banner::after {
@@ -168,7 +175,8 @@ button {
 .alert {
   border-radius: 14px;
   padding: 14px 16px;
-  flex: 0 0 auto;
+  margin-left: 24px;
+  margin-right: 24px;
 }
 
 .alert-error {
@@ -179,12 +187,9 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 380px minmax(0, 1fr);
-  gap: 22px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  align-items: stretch;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
 }
 
 .sidebar,
@@ -192,23 +197,14 @@ button {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  min-height: 0;
-}
-
-.sidebar {
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.main-content {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .panel {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(208, 218, 232, 0.95);
   border-radius: 26px;
-  padding: 24px;
+  padding: 30px;
   box-shadow: 0 18px 38px rgba(21, 39, 69, 0.08);
   backdrop-filter: blur(10px);
 }
@@ -221,7 +217,7 @@ button {
 }
 
 .panel-header {
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .panel-kicker {
@@ -246,7 +242,7 @@ button {
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 22px;
 }
 
 .form-group label {
@@ -262,7 +258,7 @@ button {
   border: 1px solid #d8e0ed;
   background: #fbfcfe;
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 15px 16px;
   color: #172033;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
@@ -275,7 +271,7 @@ button {
 }
 
 .textarea {
-  min-height: 120px;
+  min-height: 140px;
   resize: vertical;
 }
 
@@ -330,7 +326,7 @@ button {
 }
 
 .summary-card {
-  padding: 16px;
+  padding: 18px;
   background: linear-gradient(180deg, #f8fafc 0%, #f0f5fa 100%);
   border: 1px solid #dce6f4;
   border-radius: 18px;
@@ -354,10 +350,9 @@ button {
 }
 
 .inventory-panel {
-  flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-height: 620px;
 }
 
 .inventory-header {
@@ -365,8 +360,7 @@ button {
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
-  margin-bottom: 22px;
-  flex: 0 0 auto;
+  margin-bottom: 24px;
 }
 
 .inventory-header h2 {
@@ -381,12 +375,11 @@ button {
 }
 
 .search-input {
-  max-width: 360px;
+  max-width: 420px;
 }
 
 .inventory-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
+  max-height: 620px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -533,7 +526,7 @@ button {
   border: 1px solid #dde5f0;
   background: linear-gradient(180deg, #f8fbff 0%, #f4f8fd 100%);
   border-radius: 20px;
-  padding: 18px;
+  padding: 20px;
 }
 
 .selected-item-summary h3 {
@@ -555,7 +548,7 @@ button {
 .empty-state {
   border: 1px dashed #cfdaea;
   border-radius: 18px;
-  padding: 28px;
+  padding: 36px 28px;
   text-align: center;
   color: #6a7892;
   background: #fafcff;
@@ -569,7 +562,6 @@ button {
   padding: 0 6px;
   color: #50617e;
   font-size: 13px;
-  flex: 0 0 auto;
 }
 
 .site-footer strong,
@@ -583,38 +575,16 @@ button {
 }
 
 @media (max-width: 1100px) {
-  body {
-    overflow: auto;
-  }
-
-  .app-shell {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
-
   .brand-banner-top {
     flex-direction: column;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  .sidebar {
-    order: 1;
-    overflow: visible;
-    padding-right: 0;
-  }
-
-  .main-content {
-    order: 2;
-    overflow: visible;
   }
 
   .inventory-panel {
-    min-height: unset;
+    min-height: 0;
   }
 
   .inventory-scroll {
@@ -632,8 +602,12 @@ button {
 }
 
 @media (max-width: 780px) {
-  .app-shell {
-    padding: 16px;
+  .brand-banner,
+  .dashboard-grid,
+  .site-footer,
+  .alert {
+    margin-left: 16px;
+    margin-right: 16px;
   }
 
   .brand-banner {
@@ -675,7 +649,7 @@ button {
   }
 
   .panel {
-    padding: 18px;
+    padding: 20px;
     border-radius: 20px;
   }
 
@@ -691,13 +665,5 @@ button {
   .brand-nav-item {
     width: 100%;
     justify-content: center;
-  }
-  .main-content > .panel:last-child {
-  flex: 0 0 260px;
-}
-.header-logo {
-    height: 48px;
-    width: auto;
-    object-fit: contain;
   }
 }
