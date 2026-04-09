@@ -442,7 +442,7 @@ export default function App() {
           <div>
             <p className="eyebrow">AV Department</p>
             <img 
-              src="/assets/header_logo.svg"
+              src={`${import.meta.env.BASE_URL}assets/header_logo.svg`}
                 alt="Allen County War Memorial Coliseum"
                 className="header-logo"
             />  
