@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-import headerLogo from './assets/header_logo.png';
 
 const API =
   import.meta.env.VITE_API_URL ||
@@ -441,9 +440,9 @@ export default function App() {
       <header className="brand-banner">
         <div className="brand-banner-top">
           <div>
-            <p className="eyebrow">Allen County War Memorial Coliseum</p>
+            <p className="eyebrow">AV Department</p>
             <img 
-              src={headerLogo} 
+              src="/assets/header_logo.svg"
                 alt="Allen County War Memorial Coliseum"
                 className="header-logo"
             />  
