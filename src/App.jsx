@@ -441,7 +441,11 @@ export default function App() {
         <div className="brand-banner-top">
           <div>
             <p className="eyebrow">Allen County War Memorial Coliseum</p>
-            <h1>AV Department Inventory</h1>
+            <img 
+              src="/assets/header_logo.png" 
+                alt="Allen County War Memorial Coliseum"
+                className="header-logo"
+            />  
             <p className="subtext">
               Internal equipment tracking for the Allen County War Memorial Coliseum AV Department.
             </p>
