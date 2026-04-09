@@ -27,6 +27,13 @@ body {
   overflow-y: auto;
 }
 
+.header-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  fill: #ffffff
+}
+
 button,
 input,
 select,
