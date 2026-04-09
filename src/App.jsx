@@ -437,31 +437,39 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Allen County AV Inventory</p>
-          <h1>Inventory Tracker</h1>
-          <p className="subtext">
-            Local draft mode is enabled. Changes stay in your browser until you publish them.
-          </p>
+      <header className="brand-banner">
+        <div className="brand-banner-top">
+          <div>
+            <p className="eyebrow">Allen County War Memorial Coliseum</p>
+            <h1>AV Department Inventory</h1>
+            <p className="subtext">
+              Internal equipment tracking for the Allen County War Memorial Coliseum AV Department.
+            </p>
+          </div>
+
+          <div className="topbar-actions">
+            <div className="stat-pill">
+              <span className="stat-pill-label">New</span>
+              <span className="stat-pill-value">{pendingSummary.added}</span>
+            </div>
+            <div className="stat-pill">
+              <span className="stat-pill-label">Edited</span>
+              <span className="stat-pill-value">{pendingSummary.edited}</span>
+            </div>
+            <button
+              className="button button-primary"
+              onClick={publishChanges}
+              disabled={publishing || pendingSummary.total === 0}
+            >
+              {publishing ? "Publishing..." : "Publish Updates"}
+            </button>
+          </div>
         </div>
 
-        <div className="topbar-actions">
-          <div className="stat-pill">
-            <span className="stat-pill-label">New</span>
-            <span className="stat-pill-value">{pendingSummary.added}</span>
-          </div>
-          <div className="stat-pill">
-            <span className="stat-pill-label">Edited</span>
-            <span className="stat-pill-value">{pendingSummary.edited}</span>
-          </div>
-          <button
-            className="button button-primary"
-            onClick={publishChanges}
-            disabled={publishing || pendingSummary.total === 0}
-          >
-            {publishing ? "Publishing..." : "Publish Changes"}
-          </button>
+        <div className="brand-nav">
+          <span className="brand-nav-item active">Inventory</span>
+          <span className="brand-nav-item">AV Department</span>
+          <span className="brand-nav-item">Operations Portal</span>
         </div>
       </header>
 
@@ -469,10 +477,11 @@ export default function App() {
 
       <div className="dashboard-grid">
         <aside className="sidebar">
-          <section className="panel">
+          <section className="panel accent-panel">
             <div className="panel-header">
-              <h2>Add Items</h2>
-              <p>Create individually tracked assets with unique serials.</p>
+              <p className="panel-kicker">Asset Intake</p>
+              <h2>Add Inventory Assets</h2>
+              <p>Create individually tracked AV assets with unique serials.</p>
             </div>
 
             <div className="form-group">
@@ -532,23 +541,24 @@ export default function App() {
             </div>
 
             <button className="button button-dark button-full" onClick={addItemLocally} disabled={loadingApp}>
-              Add Items
+              Add Assets Locally
             </button>
           </section>
 
           <section className="panel">
             <div className="panel-header">
-              <h2>Unpublished Changes</h2>
-              <p>Keep working quickly, then push everything at once.</p>
+              <p className="panel-kicker">Draft Queue</p>
+              <h2>Pending Updates</h2>
+              <p>Work locally first, then push all AV inventory changes at once.</p>
             </div>
 
             <div className="summary-grid">
               <div className="summary-card">
-                <span className="summary-label">New Items</span>
+                <span className="summary-label">New Assets</span>
                 <span className="summary-value">{pendingSummary.added}</span>
               </div>
               <div className="summary-card">
-                <span className="summary-label">Edited Items</span>
+                <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
             </div>
@@ -558,7 +568,7 @@ export default function App() {
               onClick={publishChanges}
               disabled={publishing || pendingSummary.total === 0}
             >
-              {publishing ? "Publishing..." : "Publish Changes"}
+              {publishing ? "Publishing..." : "Publish Updates"}
             </button>
 
             <button
@@ -575,7 +585,8 @@ export default function App() {
           <section className="panel inventory-panel">
             <div className="inventory-header">
               <div>
-                <h2>Inventory</h2>
+                <p className="panel-kicker">Equipment Inventory</p>
+                <h2>AV Asset Inventory</h2>
                 <p>Search and select an item to edit locally.</p>
               </div>
 
@@ -642,7 +653,8 @@ export default function App() {
 
           <section className="panel">
             <div className="panel-header">
-              <h2>Edit Selected Item</h2>
+              <p className="panel-kicker">Asset Details</p>
+              <h2>Edit Selected Asset</h2>
               <p>Changes stay local until you publish.</p>
             </div>
 
@@ -701,6 +713,17 @@ export default function App() {
           </section>
         </main>
       </div>
+
+      <footer className="site-footer">
+        <div>
+          <strong>Allen County War Memorial Coliseum</strong>
+          <span>4000 Parnell Avenue, Fort Wayne, Indiana 46805</span>
+        </div>
+        <div>
+          <span>AV Department Inventory Portal</span>
+          <span>260-482-9502</span>
+        </div>
+      </footer>
     </div>
   );
 }
