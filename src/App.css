@@ -1280,3 +1280,58 @@ button {
     padding: 12px;
   }
 }
+
+
+
+/* ===== PRINT FIXES FOR LABELS ===== */
+@page {
+  size: letter;
+  margin: 0;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .label-preview-pages,
+  .label-preview-pages * {
+    visibility: visible !important;
+  }
+
+  .label-preview-pages {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .label-preview-page-wrap {
+    page-break-after: always;
+    break-after: page;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .label-preview-page {
+    width: 8.5in !important;
+    height: 11in !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    scale: 1 !important;
+    zoom: 1 !important;
+  }
+
+  .preview-label {
+    transform: none !important;
+  }
+
+  /* Hide UI elements */
+  button,
+  input,
+  select,
+  .detail-label {
+    display: none !important;
+  }
+}
