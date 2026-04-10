@@ -8,6 +8,26 @@ const API =
 
 const LOCAL_STORAGE_KEY = "inventoryTrackerDraftData_v1";
 const CHECKOUT_NAMES = ["Jayden", "Andrew", "Nate", "Anna", "Zach"];
+const DEFAULT_LABEL_LAYOUT = {
+  pageWidth: 8.5,
+  pageHeight: 11,
+  labelWidth: 2.625,
+  labelHeight: 1,
+  columns: 3,
+  rows: 10,
+  topMargin: 0.5,
+  leftMargin: 0.1875,
+  horizontalGap: 0.125,
+  verticalGap: 0,
+  skipLabels: 0,
+};
+
+const DEFAULT_LABEL_OPTIONS = {
+  showItemName: false,
+  showReadableId: true,
+  showBarcode: true,
+  showLocation: false,
+};
 
 export default function App() {
   // Server-backed data and the current local working draft.
@@ -56,6 +76,12 @@ export default function App() {
   const [recentScanLog, setRecentScanLog] = useState([]);
   const [scanModeEnabled, setScanModeEnabled] = useState(false);
 
+  // Label printing workflow state.
+  const [labelSearchTerm, setLabelSearchTerm] = useState("");
+  const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
+  const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
+  const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
+
   // Camera scanner modal state and the always-ready USB input ref.
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState("");
@@ -75,7 +101,7 @@ export default function App() {
   }
 
   // Renders a printable barcode preview for the selected item.
-  function Barcode({ value, label }) {
+  function Barcode({ value, label, className = "", width = 2, height = 60, displayValue = true }) {
   const ref = useRef();
 
   useEffect(() => {
@@ -84,18 +110,18 @@ export default function App() {
     try {
       JsBarcode(ref.current, value, {
         format: "CODE128",
-        width: 2,
-        height: 60,
-        displayValue: true,
+        width,
+        height,
+        displayValue,
         text: label || value,
       });
     } catch (error) {
       console.warn("Unable to render barcode preview:", error);
       ref.current.innerHTML = "";
     }
-  }, [value, label]);
+  }, [value, label, width, height, displayValue]);
 
-  return <svg ref={ref}></svg>;
+  return <svg ref={ref} className={className}></svg>;
 }
 
   // Removes the saved local draft after reset or publish.
@@ -158,6 +184,48 @@ export default function App() {
     const catShort = getCategoryShort(categoryCode);
     const locShort = getLocationShort(locationCode);
     return `${catShort}-${locShort}-${String(serialNumber).padStart(4, "0")}`;
+  }
+
+  function calculateLabelPositions(layout) {
+    const columns = Math.max(1, Number(layout.columns) || 1);
+    const rows = Math.max(1, Number(layout.rows) || 1);
+    const positions = [];
+
+    for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
+      for (let columnIndex = 0; columnIndex < columns; columnIndex++) {
+        positions.push({
+          slotIndex: rowIndex * columns + columnIndex,
+          row: rowIndex + 1,
+          column: columnIndex + 1,
+          top: Number(layout.topMargin) + rowIndex * (Number(layout.labelHeight) + Number(layout.verticalGap)),
+          left: Number(layout.leftMargin) + columnIndex * (Number(layout.labelWidth) + Number(layout.horizontalGap)),
+          width: Number(layout.labelWidth),
+          height: Number(layout.labelHeight),
+        });
+      }
+    }
+
+    return positions;
+  }
+
+  function splitLabelsIntoPages(items, layout) {
+    const positions = calculateLabelPositions(layout);
+    const slotsPerPage = positions.length;
+    const skipLabels = Math.max(0, Number(layout.skipLabels) || 0);
+    const paddedItems = [...Array(skipLabels).fill(null), ...items];
+    const totalPages = Math.max(1, Math.ceil(paddedItems.length / slotsPerPage));
+
+    return Array.from({ length: totalPages }, (_, pageIndex) => {
+      const pageItems = paddedItems.slice(pageIndex * slotsPerPage, (pageIndex + 1) * slotsPerPage);
+      return positions.map((position, slotIndex) => ({
+        ...position,
+        item: pageItems[slotIndex] || null,
+      }));
+    });
+  }
+
+  function mapSelectedItemsToPageSlots(items, layout) {
+    return splitLabelsIntoPages(items, layout);
   }
 
   function getNextSerialNumber(categoryCode, locationCode, inventory) {
@@ -365,6 +433,34 @@ export default function App() {
   const selectedItem = useMemo(() => {
     return workingInventory.find((item) => item.localId === selectedItemId) || null;
   }, [workingInventory, selectedItemId]);
+
+  const filteredLabelInventory = useMemo(() => {
+    const term = labelSearchTerm.trim().toLowerCase();
+
+    if (!term) return workingInventory;
+
+    return workingInventory.filter((item) =>
+      [
+        item["Item Name"],
+        item["Readable ID"],
+        item.Barcode,
+        item["Category Name"],
+        item["Location Name"],
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term)
+    );
+  }, [workingInventory, labelSearchTerm]);
+
+  const selectedLabelItems = useMemo(() => {
+    const selectedIds = new Set(selectedLabelItemIds);
+    return workingInventory.filter((item) => selectedIds.has(item.localId));
+  }, [workingInventory, selectedLabelItemIds]);
+
+  const labelPreviewPages = useMemo(() => {
+    return mapSelectedItemsToPageSlots(selectedLabelItems, labelLayout);
+  }, [selectedLabelItems, labelLayout]);
 
   // Mirrors the selected row into editable field state.
   useEffect(() => {
@@ -602,6 +698,42 @@ export default function App() {
     if (updateSelectedItemLocally()) {
       setAssetEditorOpen(false);
     }
+  }
+
+  function updateLabelLayout(field, value) {
+    setLabelLayout((currentLayout) => ({
+      ...currentLayout,
+      [field]: value,
+    }));
+  }
+
+  function updateLabelOption(field) {
+    setLabelOptions((currentOptions) => ({
+      ...currentOptions,
+      [field]: !currentOptions[field],
+    }));
+  }
+
+  function toggleLabelItem(itemId) {
+    setSelectedLabelItemIds((currentIds) =>
+      currentIds.includes(itemId)
+        ? currentIds.filter((currentId) => currentId !== itemId)
+        : [...currentIds, itemId]
+    );
+  }
+
+  function selectAllFilteredLabelItems() {
+    setSelectedLabelItemIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      for (const item of filteredLabelInventory) {
+        nextIds.add(item.localId);
+      }
+      return [...nextIds];
+    });
+  }
+
+  function clearSelectedLabelItems() {
+    setSelectedLabelItemIds([]);
   }
 
   function updateAssetLineItem(lineId, field, value) {
@@ -942,6 +1074,13 @@ export default function App() {
           >
             Scan Mode
           </button>
+          <button
+            className={`brand-nav-item ${activeTab === "labels" ? "active" : ""}`}
+            onClick={() => setActiveTab("labels")}
+            type="button"
+          >
+            Label Printing
+          </button>
         </div>
       </header>
 
@@ -1117,7 +1256,7 @@ export default function App() {
 
         </main>
         </div>
-      ) : (
+      ) : activeTab === "scan" ? (
         <div className="scan-mode-layout">
           {/* Unified scan controls for USB and camera workflows */}
           <section className="panel scan-mode-panel">
@@ -1214,6 +1353,191 @@ export default function App() {
                   </div>
                 ))
               )}
+            </div>
+          </section>
+        </div>
+      ) : (
+        <div className="label-printing-layout">
+          <section className="panel label-selection-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Batch Labels</p>
+              <h2>Label Printing</h2>
+              <p>Select inventory assets, tune the sheet layout, and preview barcode labels.</p>
+            </div>
+
+            <div className="label-toolbar">
+              <input
+                className="input"
+                placeholder="Search labels by item, ID, barcode, category, location..."
+                value={labelSearchTerm}
+                onChange={(e) => setLabelSearchTerm(e.target.value)}
+              />
+              <button className="button button-secondary" type="button" onClick={selectAllFilteredLabelItems}>
+                Select All Filtered
+              </button>
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={clearSelectedLabelItems}
+                disabled={selectedLabelItemIds.length === 0}
+              >
+                Clear Selection
+              </button>
+              <span className="selected-count-card">{selectedLabelItemIds.length} selected</span>
+            </div>
+
+            <div className="label-item-list">
+              {filteredLabelInventory.length === 0 ? (
+                <div className="empty-state">No inventory items matched your label search.</div>
+              ) : (
+                filteredLabelInventory.map((item) => (
+                  <label className="label-item-row" key={item.localId}>
+                    <input
+                      type="checkbox"
+                      checked={selectedLabelItemIds.includes(item.localId)}
+                      onChange={() => toggleLabelItem(item.localId)}
+                    />
+                    <span>
+                      <strong>{item["Item Name"]}</strong>
+                      <small>{item["Readable ID"] || item.Barcode}</small>
+                    </span>
+                    <span>{item["Category Name"] || "-"}</span>
+                    <span>{item["Location Name"] || "-"}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </section>
+
+          <aside className="label-controls-stack">
+            <section className="panel">
+              <div className="panel-header">
+                <p className="panel-kicker">Custom Size</p>
+                <h2>Sheet Layout</h2>
+                <p>All measurements are inches for this first version.</p>
+              </div>
+
+              <div className="label-settings-grid">
+                {[
+                  ["pageWidth", "Page Width"],
+                  ["pageHeight", "Page Height"],
+                  ["labelWidth", "Label Width"],
+                  ["labelHeight", "Label Height"],
+                  ["columns", "Columns"],
+                  ["rows", "Rows"],
+                  ["topMargin", "Top Margin"],
+                  ["leftMargin", "Left Margin"],
+                  ["horizontalGap", "Horizontal Gap"],
+                  ["verticalGap", "Vertical Gap"],
+                  ["skipLabels", "Skip Labels"],
+                ].map(([field, label]) => (
+                  <div className="form-group" key={field}>
+                    <label>{label}</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step={field === "columns" || field === "rows" || field === "skipLabels" ? "1" : "0.01"}
+                      value={labelLayout[field]}
+                      onChange={(e) => updateLabelLayout(field, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <p className="panel-kicker">Label Content</p>
+                <h2>Print Options</h2>
+              </div>
+
+              <div className="label-option-list">
+                {[
+                  ["showBarcode", "Show barcode graphic"],
+                  ["showReadableId", "Show readable ID"],
+                  ["showItemName", "Show item name"],
+                  ["showLocation", "Show location"],
+                ].map(([field, label]) => (
+                  <label className="label-option" key={field}>
+                    <input
+                      type="checkbox"
+                      checked={labelOptions[field]}
+                      onChange={() => updateLabelOption(field)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <button className="button button-secondary button-full" type="button" disabled>
+                PDF Export Coming Soon
+              </button>
+            </section>
+          </aside>
+
+          <section className="panel label-preview-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Print Preview</p>
+              <h2>Preview Sheets</h2>
+              <p>
+                {selectedLabelItems.length} label{selectedLabelItems.length === 1 ? "" : "s"} across{" "}
+                {labelPreviewPages.length} page{labelPreviewPages.length === 1 ? "" : "s"}.
+              </p>
+            </div>
+
+            <div className="label-preview-pages">
+              {labelPreviewPages.map((pageSlots, pageIndex) => (
+                <div className="label-preview-page-wrap" key={pageIndex}>
+                  <span className="detail-label">Page {pageIndex + 1}</span>
+                  <div
+                    className="label-preview-page"
+                    style={{
+                      width: `${Number(labelLayout.pageWidth) || 8.5}in`,
+                      height: `${Number(labelLayout.pageHeight) || 11}in`,
+                    }}
+                  >
+                    {pageSlots.map((slot) => (
+                      <div
+                        key={slot.slotIndex}
+                        className={`preview-label ${slot.item ? "" : "empty"}`}
+                        style={{
+                          top: `${slot.top}in`,
+                          left: `${slot.left}in`,
+                          width: `${slot.width}in`,
+                          height: `${slot.height}in`,
+                        }}
+                      >
+                        {slot.item ? (
+                          <>
+                            {labelOptions.showItemName && (
+                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
+                            )}
+                            {labelOptions.showBarcode && (
+                              <Barcode
+                                className="preview-label-barcode"
+                                value={slot.item.Barcode}
+                                label={labelOptions.showReadableId ? slot.item["Readable ID"] || slot.item.Barcode : ""}
+                                width={1.5}
+                                height={28}
+                                displayValue={labelOptions.showReadableId}
+                              />
+                            )}
+                            {!labelOptions.showBarcode && labelOptions.showReadableId && (
+                              <strong className="preview-label-id">{slot.item["Readable ID"] || slot.item.Barcode}</strong>
+                            )}
+                            {labelOptions.showLocation && (
+                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span>Empty</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         </div>
