@@ -606,6 +606,67 @@ button {
   max-height: 70%;
 }
 
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  .brand-banner,
+  .label-selection-panel,
+  .label-controls-stack,
+  .label-preview-panel > .panel-header,
+  .site-footer,
+  .scanner-modal-overlay,
+  .alert {
+    display: none !important;
+  }
+
+  .app-shell,
+  .label-printing-layout,
+  .label-preview-panel,
+  .label-preview-pages,
+  .label-preview-page-wrap {
+    display: block;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .label-preview-panel {
+    width: auto;
+  }
+
+  .label-preview-page {
+    transform: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .label-preview-page-wrap:last-child .label-preview-page {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .preview-label {
+    border-color: transparent;
+  }
+
+  .preview-label.empty {
+    background: transparent;
+    color: transparent;
+  }
+}
+
 .summary-label {
   display: block;
   font-size: 10px;

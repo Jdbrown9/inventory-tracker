@@ -737,6 +737,10 @@ export default function App() {
     setSelectedLabelItemIds([]);
   }
 
+  function printLabelPreview() {
+    window.print();
+  }
+
   function updateAssetLineItem(lineId, field, value) {
     setAssetLineItems((currentLineItems) =>
       currentLineItems.map((lineItem) =>
@@ -1472,8 +1476,13 @@ export default function App() {
                 ))}
               </div>
 
-              <button className="button button-secondary button-full" type="button" disabled>
-                PDF Export Coming Soon
+              <button
+                className="button button-dark button-full"
+                type="button"
+                onClick={printLabelPreview}
+                disabled={selectedLabelItems.length === 0}
+              >
+                Print Labels
               </button>
             </section>
           </aside>
