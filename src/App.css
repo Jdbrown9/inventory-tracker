@@ -654,6 +654,12 @@ button {
   min-width: 0;
 }
 
+.editor-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
 .empty-state {
   border: 1px dashed #cfdaea;
   border-radius: 18px;
@@ -778,6 +784,10 @@ button {
   }
 
   .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-field-grid {
     grid-template-columns: 1fr;
   }
 

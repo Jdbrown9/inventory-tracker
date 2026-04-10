@@ -24,9 +24,20 @@ export default function App() {
 
   // Selected item editor values.
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [editingItemName, setEditingItemName] = useState("");
+  const [editingCategoryCode, setEditingCategoryCode] = useState("");
+  const [editingLocationCode, setEditingLocationCode] = useState("");
+  const [editingSerialNumber, setEditingSerialNumber] = useState("");
+  const [editingBarcode, setEditingBarcode] = useState("");
+  const [editingReadableId, setEditingReadableId] = useState("");
+  const [editingQuantity, setEditingQuantity] = useState(1);
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
+  const [editingCheckedOutTo, setEditingCheckedOutTo] = useState("");
+  const [editingCheckedOutAt, setEditingCheckedOutAt] = useState("");
+  const [editingLastCheckedInAt, setEditingLastCheckedInAt] = useState("");
+  const [editingLastScanAction, setEditingLastScanAction] = useState("");
 
   // App state for loading, errors, and searching.
   const [loadingApp, setLoadingApp] = useState(true);
@@ -272,6 +283,7 @@ export default function App() {
           "Serial Number",
           "Barcode",
           "Readable ID",
+          "Quantity",
           "Status",
           "Condition",
           "Notes",
@@ -329,13 +341,35 @@ export default function App() {
   // Mirrors the selected row into editable field state.
   useEffect(() => {
     if (selectedItem) {
+      setEditingItemName(selectedItem["Item Name"] || "");
+      setEditingCategoryCode(String(selectedItem["Category Code"] || "").padStart(2, "0"));
+      setEditingLocationCode(String(selectedItem["Location Code"] || "").padStart(2, "0"));
+      setEditingSerialNumber(selectedItem["Serial Number"] || "");
+      setEditingBarcode(selectedItem.Barcode || "");
+      setEditingReadableId(selectedItem["Readable ID"] || "");
+      setEditingQuantity(selectedItem.Quantity || 1);
       setEditingNotes(selectedItem.Notes || "");
       setEditingCondition(selectedItem.Condition || "");
       setEditingStatus(selectedItem.Status || "Active");
+      setEditingCheckedOutTo(selectedItem["Checked Out To"] || "");
+      setEditingCheckedOutAt(selectedItem["Checked Out At"] || "");
+      setEditingLastCheckedInAt(selectedItem["Last Checked In At"] || "");
+      setEditingLastScanAction(selectedItem["Last Scan Action"] || "");
     } else {
+      setEditingItemName("");
+      setEditingCategoryCode("");
+      setEditingLocationCode("");
+      setEditingSerialNumber("");
+      setEditingBarcode("");
+      setEditingReadableId("");
+      setEditingQuantity(1);
       setEditingNotes("");
       setEditingCondition("");
       setEditingStatus("Active");
+      setEditingCheckedOutTo("");
+      setEditingCheckedOutAt("");
+      setEditingLastCheckedInAt("");
+      setEditingLastScanAction("");
     }
   }, [selectedItem]);
 
@@ -608,14 +642,46 @@ export default function App() {
   function updateSelectedItemLocally() {
     if (!selectedItem) return;
 
+    const categoryCode = editingCategoryCode ? String(editingCategoryCode).padStart(2, "0") : "";
+    const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
+    const quantityValue = Number(editingQuantity);
+
+    if (!editingItemName.trim()) {
+      alert("Please enter an item name.");
+      return;
+    }
+
+    if (!categoryCode || !locationCode) {
+      alert("Please select a category and location.");
+      return;
+    }
+
+    if (!Number.isFinite(quantityValue) || quantityValue < 0) {
+      alert("Quantity must be a number of 0 or more.");
+      return;
+    }
+
     const updatedInventory = workingInventory.map((item) => {
       if (item.localId !== selectedItem.localId) return item;
 
       return {
         ...item,
-        Notes: editingNotes,
-        Condition: editingCondition,
+        "Item Name": editingItemName.trim(),
+        "Category Code": categoryCode,
+        "Category Name": getCategoryName(categoryCode) || item["Category Name"],
+        "Location Code": locationCode,
+        "Location Name": getLocationName(locationCode) || item["Location Name"],
+        "Serial Number": editingSerialNumber,
+        Barcode: editingBarcode.trim(),
+        "Readable ID": editingReadableId.trim(),
+        Quantity: quantityValue,
         Status: editingStatus,
+        Condition: editingCondition,
+        Notes: editingNotes,
+        "Checked Out To": editingCheckedOutTo,
+        "Checked Out At": editingCheckedOutAt,
+        "Last Checked In At": editingLastCheckedInAt,
+        "Last Scan Action": editingLastScanAction,
         "Last Updated": new Date().toISOString(),
       };
     });
@@ -651,7 +717,7 @@ export default function App() {
           itemName: item["Item Name"],
           categoryCode: item["Category Code"],
           locationCode: item["Location Code"],
-          quantity: 1,
+          quantity: item.Quantity || 1,
           status: item.Status || "Active",
           condition: item.Condition || "",
           notes: item.Notes || "",
@@ -672,6 +738,7 @@ export default function App() {
             "Serial Number",
             "Barcode",
             "Readable ID",
+            "Quantity",
             "Status",
             "Condition",
             "Notes",
@@ -695,7 +762,7 @@ export default function App() {
           serialNumber: item["Serial Number"],
           barcode: item.Barcode,
           readableId: item["Readable ID"],
-          quantity: 1,
+          quantity: item.Quantity || 1,
           status: item.Status,
           condition: item.Condition,
           notes: item.Notes,
@@ -1024,27 +1091,149 @@ export default function App() {
                 </div>
 
                 <div className="editor-fields">
-                  <div className="form-group">
-                    <label>Status</label>
-                    <select
-                      className="input"
-                      value={editingStatus}
-                      onChange={(e) => setEditingStatus(e.target.value)}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Checked Out">Checked Out</option>
-                      <option value="Missing">Missing</option>
-                      <option value="Retired">Retired</option>
-                    </select>
-                  </div>
+                  <div className="editor-field-grid">
+                    <div className="form-group">
+                      <label>Item Name</label>
+                      <input
+                        className="input"
+                        value={editingItemName}
+                        onChange={(e) => setEditingItemName(e.target.value)}
+                      />
+                    </div>
 
-                  <div className="form-group">
-                    <label>Condition</label>
-                    <input
-                      className="input"
-                      value={editingCondition}
-                      onChange={(e) => setEditingCondition(e.target.value)}
-                    />
+                    <div className="form-group">
+                      <label>Status</label>
+                      <select
+                        className="input"
+                        value={editingStatus}
+                        onChange={(e) => setEditingStatus(e.target.value)}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Checked Out">Checked Out</option>
+                        <option value="Missing">Missing</option>
+                        <option value="Retired">Retired</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select
+                        className="input"
+                        value={editingCategoryCode}
+                        onChange={(e) => setEditingCategoryCode(e.target.value)}
+                      >
+                        <option value="">Select category</option>
+                        {categories.map((c, i) => (
+                          <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
+                            {c["Category Name"]} ({String(c["Category Code"]).padStart(2, "0")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Location</label>
+                      <select
+                        className="input"
+                        value={editingLocationCode}
+                        onChange={(e) => setEditingLocationCode(e.target.value)}
+                      >
+                        <option value="">Select location</option>
+                        {locations.map((l, i) => (
+                          <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
+                            {l["Location Name"]} ({String(l["Location Code"]).padStart(2, "0")})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Serial Number</label>
+                      <input
+                        className="input"
+                        value={editingSerialNumber}
+                        onChange={(e) => setEditingSerialNumber(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input
+                        className="input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editingQuantity}
+                        onChange={(e) => setEditingQuantity(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Barcode</label>
+                      <input
+                        className="input"
+                        value={editingBarcode}
+                        onChange={(e) => setEditingBarcode(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Readable ID</label>
+                      <input
+                        className="input"
+                        value={editingReadableId}
+                        onChange={(e) => setEditingReadableId(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Condition</label>
+                      <input
+                        className="input"
+                        value={editingCondition}
+                        onChange={(e) => setEditingCondition(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Checked Out To</label>
+                      <input
+                        className="input"
+                        value={editingCheckedOutTo}
+                        onChange={(e) => setEditingCheckedOutTo(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Checked Out At</label>
+                      <input
+                        className="input"
+                        value={editingCheckedOutAt}
+                        onChange={(e) => setEditingCheckedOutAt(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Last Checked In At</label>
+                      <input
+                        className="input"
+                        value={editingLastCheckedInAt}
+                        onChange={(e) => setEditingLastCheckedInAt(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Last Scan Action</label>
+                      <select
+                        className="input"
+                        value={editingLastScanAction}
+                        onChange={(e) => setEditingLastScanAction(e.target.value)}
+                      >
+                        <option value="">None</option>
+                        <option value="Checked In">Checked In</option>
+                        <option value="Checked Out">Checked Out</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -1057,7 +1246,7 @@ export default function App() {
                   </div>
 
                   <button className="button button-dark" onClick={updateSelectedItemLocally}>
-                    Save Local Edit
+                    Save All Local Details
                   </button>
                 </div>
               </div>
