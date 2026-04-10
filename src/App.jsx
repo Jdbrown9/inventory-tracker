@@ -1746,8 +1746,8 @@ export default function App() {
                                 className="preview-label-barcode"
                                 value={slot.item.Barcode}
                                 label={labelOptions.showReadableId ? slot.item["Readable ID"] || slot.item.Barcode : ""}
-                                width={1.5}
-                                height={28}
+                                width={2}
+                                height={42}
                                 displayValue={labelOptions.showReadableId}
                               />
                             )}

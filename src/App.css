@@ -653,8 +653,10 @@ button {
 }
 
 .preview-label-barcode {
-  width: 92%;
-  max-height: 70%;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  display: block;
 }
 
 @media print {
