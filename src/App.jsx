@@ -1117,11 +1117,6 @@ export default function App() {
                   placeholder="Scan barcode or type readable ID"
                   value={scanInputValue}
                   onChange={(e) => setScanInputValue(e.target.value)}
-                  onBlur={() => {
-                    if (scanModeEnabled) {
-                      focusUsbScanInput();
-                    }
-                  }}
                   autoComplete="off"
                   autoCapitalize="off"
                   autoCorrect="off"
