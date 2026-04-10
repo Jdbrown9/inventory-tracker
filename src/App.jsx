@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import JsBarcode from "jsbarcode";
+import JSZip from "jszip";
 
 const API =
   import.meta.env.VITE_API_URL ||
@@ -29,6 +30,153 @@ const DEFAULT_LABEL_OPTIONS = {
   showLocation: false,
   showPropertyText: false,
 };
+
+const TWIPS_PER_INCH = 1440;
+const LABEL_TEMPLATE_ACCEPT =
+  ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+function roundLabelMeasurement(value, precision = 3) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  const factor = 10 ** precision;
+  return Math.round(numericValue * factor) / factor;
+}
+
+function twipsToInches(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return numericValue / TWIPS_PER_INCH;
+}
+
+function average(values) {
+  const safeValues = values.filter((value) => Number.isFinite(value));
+  if (safeValues.length === 0) return 0;
+  return safeValues.reduce((sum, value) => sum + value, 0) / safeValues.length;
+}
+
+function detectLabelColumns(columnWidths) {
+  if (!Array.isArray(columnWidths) || columnWidths.length === 0) {
+    return { labelColumns: [], gapColumns: [] };
+  }
+
+  const largestWidth = Math.max(...columnWidths);
+  const threshold = largestWidth * 0.6;
+  const labelColumns = [];
+  const gapColumns = [];
+
+  columnWidths.forEach((width, index) => {
+    if (width >= threshold) {
+      labelColumns.push({ index, width });
+    } else {
+      gapColumns.push({ index, width });
+    }
+  });
+
+  if (labelColumns.length === 0) {
+    return {
+      labelColumns: columnWidths.map((width, index) => ({ index, width })),
+      gapColumns: [],
+    };
+  }
+
+  return { labelColumns, gapColumns };
+}
+
+async function analyzeDocxLabelTemplate(file) {
+  const zip = await JSZip.loadAsync(file);
+  const documentXml = await zip.file("word/document.xml")?.async("string");
+  if (!documentXml) {
+    throw new Error("This DOCX file is missing word/document.xml.");
+  }
+
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(documentXml, "application/xml");
+  const parserError = xml.querySelector("parsererror");
+  if (parserError) {
+    throw new Error("The DOCX template could not be parsed.");
+  }
+
+  const getWordAttr = (node, localName) => {
+    if (!node) return "";
+    return (
+      node.getAttribute(`w:${localName}`) ||
+      node.getAttribute(localName) ||
+      ""
+    );
+  };
+
+  const section = xml.getElementsByTagName("w:sectPr")[0];
+  const pageSizeNode = section?.getElementsByTagName("w:pgSz")[0];
+  const pageMarginNode = section?.getElementsByTagName("w:pgMar")[0];
+  const tableNode = xml.getElementsByTagName("w:tbl")[0];
+
+  if (!section || !pageSizeNode || !pageMarginNode || !tableNode) {
+    throw new Error("No supported label table was found in this DOCX template.");
+  }
+
+  const pageWidth = roundLabelMeasurement(twipsToInches(getWordAttr(pageSizeNode, "w")));
+  const pageHeight = roundLabelMeasurement(twipsToInches(getWordAttr(pageSizeNode, "h")));
+  const topMargin = roundLabelMeasurement(twipsToInches(getWordAttr(pageMarginNode, "top")));
+  const leftMargin = roundLabelMeasurement(twipsToInches(getWordAttr(pageMarginNode, "left")));
+  const columnWidths = Array.from(tableNode.getElementsByTagName("w:gridCol")).map((node) =>
+    twipsToInches(getWordAttr(node, "w"))
+  );
+
+  const rows = Array.from(tableNode.children).filter((node) => node.tagName === "w:tr");
+  const rowHeights = rows
+    .map((row) => {
+      const trHeightNode = row.getElementsByTagName("w:trHeight")[0];
+      return trHeightNode ? twipsToInches(getWordAttr(trHeightNode, "val")) : NaN;
+    })
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const { labelColumns, gapColumns } = detectLabelColumns(columnWidths);
+  const labelWidth = roundLabelMeasurement(average(labelColumns.map((column) => column.width)));
+  const horizontalGap = roundLabelMeasurement(average(gapColumns.map((column) => column.width)));
+  const labelHeight = roundLabelMeasurement(
+    rowHeights.length > 0 ? average(rowHeights) : (pageHeight - topMargin) / Math.max(rows.length, 1)
+  );
+
+  const layout = {
+    pageWidth: pageWidth || DEFAULT_LABEL_LAYOUT.pageWidth,
+    pageHeight: pageHeight || DEFAULT_LABEL_LAYOUT.pageHeight,
+    labelWidth: labelWidth || DEFAULT_LABEL_LAYOUT.labelWidth,
+    labelHeight: labelHeight || DEFAULT_LABEL_LAYOUT.labelHeight,
+    columns: labelColumns.length || DEFAULT_LABEL_LAYOUT.columns,
+    rows: rows.length || DEFAULT_LABEL_LAYOUT.rows,
+    topMargin: topMargin || DEFAULT_LABEL_LAYOUT.topMargin,
+    leftMargin: leftMargin || DEFAULT_LABEL_LAYOUT.leftMargin,
+    horizontalGap,
+    verticalGap: DEFAULT_LABEL_LAYOUT.verticalGap,
+    skipLabels: 0,
+  };
+
+  const confidenceNotes = [];
+  if (gapColumns.length === 0) {
+    confidenceNotes.push("No explicit spacer columns were found, so horizontal gap was assumed to be 0.");
+  }
+  if (rowHeights.length === 0) {
+    confidenceNotes.push("Row heights were not explicitly defined, so label height was estimated from the page.");
+  }
+
+  return {
+    layout,
+    summary: {
+      pageWidth,
+      pageHeight,
+      labelWidth: layout.labelWidth,
+      labelHeight: layout.labelHeight,
+      columns: layout.columns,
+      rows: layout.rows,
+      leftMargin: layout.leftMargin,
+      topMargin: layout.topMargin,
+      horizontalGap: layout.horizontalGap,
+      verticalGap: layout.verticalGap,
+      labelsPerPage: layout.columns * layout.rows,
+    },
+    confidenceNotes,
+  };
+}
 
 export default function App() {
   // Server-backed data and the current local working draft.
@@ -82,6 +230,10 @@ export default function App() {
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
   const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
+  const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
+  const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
+  const [labelTemplateError, setLabelTemplateError] = useState("");
+  const [labelTemplateDetails, setLabelTemplateDetails] = useState(null);
 
   // Camera scanner modal state and the always-ready USB input ref.
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -739,6 +891,41 @@ export default function App() {
 
   function printLabelPreview() {
     window.print();
+  }
+
+  async function handleLabelTemplateUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLabelTemplateFileName(file.name);
+    setLabelTemplateStatus("Analyzing template...");
+    setLabelTemplateError("");
+    setLabelTemplateDetails(null);
+
+    try {
+      const analysis = await analyzeDocxLabelTemplate(file);
+      setLabelLayout((currentLayout) => ({
+        ...currentLayout,
+        ...analysis.layout,
+        skipLabels: currentLayout.skipLabels,
+      }));
+      setLabelTemplateDetails(analysis.summary);
+      setLabelTemplateStatus("Template imported and layout fields updated.");
+      setLabelTemplateError(
+        analysis.confidenceNotes.length > 0 ? analysis.confidenceNotes.join(" ") : ""
+      );
+    } catch (error) {
+      console.error("Template import failed:", error);
+      setLabelTemplateStatus("");
+      setLabelTemplateDetails(null);
+      setLabelTemplateError(
+        error instanceof Error
+          ? error.message
+          : "Unable to read that DOCX template. Try a table-based label sheet."
+      );
+    } finally {
+      event.target.value = "";
+    }
   }
 
   function updateAssetLineItem(lineId, field, value) {
@@ -1420,6 +1607,36 @@ export default function App() {
                 <p className="panel-kicker">Custom Size</p>
                 <h2>Sheet Layout</h2>
                 <p>All measurements are inches for this first version.</p>
+              </div>
+
+              <div className="template-import-panel">
+                <label className="button button-secondary button-full template-upload-button">
+                  <input
+                    type="file"
+                    accept={LABEL_TEMPLATE_ACCEPT}
+                    onChange={handleLabelTemplateUpload}
+                    hidden
+                  />
+                  Import DOCX Label Template
+                </label>
+                <p className="template-import-help">
+                  Upload a Word label sheet template and the app will try to auto-fill the layout below.
+                </p>
+                {labelTemplateFileName ? (
+                  <div className="template-import-meta">
+                    <strong>{labelTemplateFileName}</strong>
+                    {labelTemplateStatus ? <span>{labelTemplateStatus}</span> : null}
+                  </div>
+                ) : null}
+                {labelTemplateError ? <div className="template-import-warning">{labelTemplateError}</div> : null}
+                {labelTemplateDetails ? (
+                  <div className="template-detected-grid">
+                    <span><strong>{labelTemplateDetails.columns}</strong> across</span>
+                    <span><strong>{labelTemplateDetails.rows}</strong> down</span>
+                    <span><strong>{labelTemplateDetails.labelsPerPage}</strong> per page</span>
+                    <span>{labelTemplateDetails.labelWidth}" × {labelTemplateDetails.labelHeight}"</span>
+                  </div>
+                ) : null}
               </div>
 
               <div className="label-settings-grid">
