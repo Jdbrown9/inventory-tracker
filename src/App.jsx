@@ -21,6 +21,10 @@ export default function App() {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [addAssetModalOpen, setAddAssetModalOpen] = useState(false);
+  const [assetLineItems, setAssetLineItems] = useState([
+    { lineId: "line-1", name: "", category: "", location: "", quantity: 1 },
+  ]);
 
   // Selected item editor values.
   const [selectedItemId, setSelectedItemId] = useState("");
@@ -100,6 +104,17 @@ export default function App() {
   // Creates a client-side-only ID for items that do not exist in Sheets yet.
   function buildLocalItemId() {
     return `local-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  }
+
+  function buildAssetLineItem(overrides = {}) {
+    return {
+      lineId: `line-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      name: "",
+      category: category || "",
+      location: location || "",
+      quantity: 1,
+      ...overrides,
+    };
   }
 
   // Code lookup helpers keep barcode/ID generation tied to sheet data.
@@ -578,58 +593,90 @@ export default function App() {
     }
   }
 
+  function updateAssetLineItem(lineId, field, value) {
+    setAssetLineItems((currentLineItems) =>
+      currentLineItems.map((lineItem) =>
+        lineItem.lineId === lineId ? { ...lineItem, [field]: value } : lineItem
+      )
+    );
+  }
+
+  function addAssetLineItem() {
+    setAssetLineItems((currentLineItems) => [...currentLineItems, buildAssetLineItem()]);
+  }
+
+  function removeAssetLineItem(lineId) {
+    setAssetLineItems((currentLineItems) => {
+      if (currentLineItems.length === 1) return currentLineItems;
+      return currentLineItems.filter((lineItem) => lineItem.lineId !== lineId);
+    });
+  }
+
   // Creates one or more new local inventory items without publishing yet.
   function addItemLocally() {
-    if (!name.trim()) {
-      alert("Please enter an item name.");
+    if (assetLineItems.length === 0) {
+      alert("Please add at least one line item.");
       return;
     }
 
-    if (!category || !location) {
-      alert("Please wait for categories and locations to load.");
-      return;
-    }
+    for (const lineItem of assetLineItems) {
+      if (!lineItem.name.trim()) {
+        alert("Please enter an item name for every line item.");
+        return;
+      }
 
-    const count = Number(quantity);
+      if (!lineItem.category || !lineItem.location) {
+        alert("Please select a category and location for every line item.");
+        return;
+      }
 
-    if (!Number.isInteger(count) || count < 1) {
-      alert("Number of items must be a whole number of 1 or more.");
-      return;
+      const count = Number(lineItem.quantity);
+
+      if (!Number.isInteger(count) || count < 1) {
+        alert("Quantity must be a whole number of 1 or more for every line item.");
+        return;
+      }
     }
 
     const inventoryCopy = [...workingInventory];
     const newItems = [];
 
-    for (let i = 0; i < count; i++) {
-      const serialNumber = getNextSerialNumber(category, location, inventoryCopy);
-      const barcode = buildBarcode(category, location, serialNumber);
-      const readableId = buildReadableId(category, location, serialNumber);
+    for (const lineItem of assetLineItems) {
+      const categoryCode = String(lineItem.category).padStart(2, "0");
+      const locationCode = String(lineItem.location).padStart(2, "0");
+      const count = Number(lineItem.quantity);
 
-      const newItem = {
-        localId: buildLocalItemId(),
-        rowNumber: "",
-        "Item Name": name.trim(),
-        "Category Code": String(category).padStart(2, "0"),
-        "Category Name": getCategoryName(category),
-        "Location Code": String(location).padStart(2, "0"),
-        "Location Name": getLocationName(location),
-        "Serial Number": serialNumber,
-        Barcode: barcode,
-        "Readable ID": readableId,
-        Quantity: 1,
-        Status: "Active",
-        Condition: "Good",
-        Notes: "",
-        "Checked Out To": "",
-        "Checked Out At": "",
-        "Last Checked In At": "",
-        "Last Scan Action": "",
-        "Last Updated": new Date().toISOString(),
-        isLocalOnly: true,
-      };
+      for (let i = 0; i < count; i++) {
+        const serialNumber = getNextSerialNumber(categoryCode, locationCode, inventoryCopy);
+        const barcode = buildBarcode(categoryCode, locationCode, serialNumber);
+        const readableId = buildReadableId(categoryCode, locationCode, serialNumber);
 
-      newItems.push(newItem);
-      inventoryCopy.push(newItem);
+        const newItem = {
+          localId: buildLocalItemId(),
+          rowNumber: "",
+          "Item Name": lineItem.name.trim(),
+          "Category Code": categoryCode,
+          "Category Name": getCategoryName(categoryCode),
+          "Location Code": locationCode,
+          "Location Name": getLocationName(locationCode),
+          "Serial Number": serialNumber,
+          Barcode: barcode,
+          "Readable ID": readableId,
+          Quantity: 1,
+          Status: "Active",
+          Condition: "Good",
+          Notes: "",
+          "Checked Out To": "",
+          "Checked Out At": "",
+          "Last Checked In At": "",
+          "Last Scan Action": "",
+          "Last Updated": new Date().toISOString(),
+          isLocalOnly: true,
+        };
+
+        newItems.push(newItem);
+        inventoryCopy.push(newItem);
+      }
     }
 
     const updatedInventory = [...newItems.reverse(), ...workingInventory];
@@ -641,6 +688,8 @@ export default function App() {
 
     setName("");
     setQuantity(1);
+    setAssetLineItems([buildAssetLineItem({ category, location })]);
+    setAddAssetModalOpen(false);
   }
 
   // Saves the right-side editor fields into the working draft.
@@ -888,114 +937,7 @@ export default function App() {
       {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
 
       {activeTab === "inventory" ? (
-        <div className="dashboard-grid">
-          <aside className="sidebar">
-          {/* Local asset creation */}
-          <section className="panel accent-panel">
-            <div className="panel-header">
-              <p className="panel-kicker">Asset Intake</p>
-              <h2>Add Inventory Assets</h2>
-              <p>Create individually tracked AV assets with unique serials.</p>
-            </div>
-
-            <div className="form-group">
-              <label>Item Name</label>
-              <input
-                className="input"
-                placeholder="Shure ULXD4 Receiver"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Category</label>
-              <select
-                className="input"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                disabled={loadingApp}
-              >
-                <option value="">Select category</option>
-                {categories.map((c, i) => (
-                  <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
-                    {c["Category Name"]} ({String(c["Category Code"]).padStart(2, "0")})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Location</label>
-              <select
-                className="input"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={loadingApp}
-              >
-                <option value="">Select location</option>
-                {locations.map((l, i) => (
-                  <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
-                    {l["Location Name"]} ({String(l["Location Code"]).padStart(2, "0")})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Number of Items to Create</label>
-              <input
-                className="input"
-                type="number"
-                min="1"
-                step="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </div>
-
-            <button className="button button-dark button-full" onClick={addItemLocally} disabled={loadingApp}>
-              Add Assets Locally
-            </button>
-          </section>
-
-          {/* Draft summary and publishing actions */}
-          <section className="panel">
-            <div className="panel-header">
-              <p className="panel-kicker">Draft Queue</p>
-              <h2>Pending Updates</h2>
-              <p>Work locally first, then push all AV inventory changes at once.</p>
-            </div>
-
-            <div className="summary-grid">
-              <div className="summary-card">
-                <span className="summary-label">New Assets</span>
-                <span className="summary-value">{pendingSummary.added}</span>
-              </div>
-              <div className="summary-card">
-                <span className="summary-label">Edited Assets</span>
-                <span className="summary-value">{pendingSummary.edited}</span>
-              </div>
-            </div>
-
-            <button
-              className="button button-primary button-full"
-              onClick={publishChanges}
-              disabled={publishing || pendingSummary.total === 0}
-            >
-              {publishing ? "Publishing..." : "Publish Updates"}
-            </button>
-
-            <button
-              className="button button-secondary button-full"
-              onClick={discardLocalChanges}
-              disabled={publishing || pendingSummary.total === 0}
-            >
-              Discard Local Changes
-            </button>
-          </section>
-        </aside>
-
+        <div className="inventory-workspace">
         <main className="main-content">
           {/* Searchable inventory list */}
           <section className="panel inventory-panel">
@@ -1003,7 +945,7 @@ export default function App() {
               <div>
                 <p className="panel-kicker">Equipment Inventory</p>
                 <h2>AV Asset Inventory</h2>
-                <p>Search, scan, and select an item to edit locally.</p>
+                <p>Search, scan, and click an item to view its barcode or edit locally.</p>
               </div>
 
               <div className="inventory-tools">
@@ -1014,6 +956,12 @@ export default function App() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <button
+                  className="button button-primary scan-button"
+                  onClick={() => setAddAssetModalOpen(true)}
+                >
+                  Add Assets
+                </button>
+                <button
                   className="button button-dark scan-button"
                   onClick={() => {
                     setActiveTab("scan");
@@ -1023,6 +971,31 @@ export default function App() {
                   Open Scan Mode
                 </button>
               </div>
+            </div>
+
+            <div className="inventory-action-strip">
+              <div className="summary-card compact-summary-card">
+                <span className="summary-label">New Assets</span>
+                <span className="summary-value">{pendingSummary.added}</span>
+              </div>
+              <div className="summary-card compact-summary-card">
+                <span className="summary-label">Edited Assets</span>
+                <span className="summary-value">{pendingSummary.edited}</span>
+              </div>
+              <button
+                className="button button-primary"
+                onClick={publishChanges}
+                disabled={publishing || pendingSummary.total === 0}
+              >
+                {publishing ? "Publishing..." : "Publish Updates"}
+              </button>
+              <button
+                className="button button-secondary"
+                onClick={discardLocalChanges}
+                disabled={publishing || pendingSummary.total === 0}
+              >
+                Discard Local Changes
+              </button>
             </div>
 
             <div className="inventory-scroll">
@@ -1038,6 +1011,7 @@ export default function App() {
                       className={`inventory-card ${selectedItemId === item.localId ? "selected" : ""} ${
                         item.isLocalOnly ? "new-item" : ""
                       }`}
+                      onClick={() => openAssetEditor(item.localId)}
                     >
                       <div className="inventory-card-top">
                         <div>
@@ -1060,7 +1034,10 @@ export default function App() {
                           <button
                             className="button button-secondary edit-asset-button"
                             type="button"
-                            onClick={() => openAssetEditor(item.localId)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openAssetEditor(item.localId);
+                            }}
                           >
                             Edit
                           </button>
@@ -1202,6 +1179,97 @@ export default function App() {
           <span>260-482-9502</span>
         </div>
       </footer>
+
+      {/* Multi-line asset intake modal */}
+      {addAssetModalOpen && (
+        <div className="scanner-modal-overlay" onClick={() => setAddAssetModalOpen(false)}>
+          <div className="scanner-modal add-assets-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scanner-modal-header">
+              <div>
+                <p className="panel-kicker">Asset Intake</p>
+                <h2>Add Inventory Assets</h2>
+                <p>Add one or more line items, then create the assets locally before publishing.</p>
+              </div>
+
+              <button className="button button-secondary scanner-close" onClick={() => setAddAssetModalOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="asset-line-items">
+              <div className="asset-line-item asset-line-item-header">
+                <span>Item Name</span>
+                <span>Category</span>
+                <span>Location</span>
+                <span>Qty</span>
+                <span>Action</span>
+              </div>
+
+              {assetLineItems.map((lineItem) => (
+                <div className="asset-line-item" key={lineItem.lineId}>
+                  <input
+                    className="input"
+                    placeholder="Shure ULXD4 Receiver"
+                    value={lineItem.name}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "name", e.target.value)}
+                  />
+                  <select
+                    className="input"
+                    value={lineItem.category}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "category", e.target.value)}
+                    disabled={loadingApp}
+                  >
+                    <option value="">Category</option>
+                    {categories.map((c, i) => (
+                      <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
+                        {c["Category Name"]} ({String(c["Category Code"]).padStart(2, "0")})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="input"
+                    value={lineItem.location}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "location", e.target.value)}
+                    disabled={loadingApp}
+                  >
+                    <option value="">Location</option>
+                    {locations.map((l, i) => (
+                      <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
+                        {l["Location Name"]} ({String(l["Location Code"]).padStart(2, "0")})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={lineItem.quantity}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "quantity", e.target.value)}
+                  />
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => removeAssetLineItem(lineItem.lineId)}
+                    disabled={assetLineItems.length === 1}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-action-row">
+              <button className="button button-secondary" type="button" onClick={addAssetLineItem}>
+                Add Line Item
+              </button>
+              <button className="button button-dark" type="button" onClick={addItemLocally} disabled={loadingApp}>
+                Add Assets Locally
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Asset editor modal */}
       {assetEditorOpen && selectedItem && (

@@ -51,9 +51,10 @@ button {
 
 .brand-banner,
 .dashboard-grid,
+.inventory-workspace,
 .site-footer {
-  margin-left: 16px;
-  margin-right: 16px;
+  margin-left: 8px;
+  margin-right: 8px;
 }
 
 .brand-banner {
@@ -189,14 +190,18 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
+.inventory-workspace {
+  display: block;
+}
+
 .scan-mode-layout {
-  margin-left: 16px;
-  margin-right: 16px;
+  margin-left: 8px;
+  margin-right: 8px;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   gap: 16px;
@@ -445,7 +450,7 @@ button {
 .inventory-panel {
   display: flex;
   flex-direction: column;
-  min-height: 760px;
+  min-height: 78vh;
 }
 
 .inventory-header {
@@ -472,7 +477,7 @@ button {
   display: flex;
   gap: 8px;
   align-items: stretch;
-  width: min(100%, 640px);
+  width: min(100%, 860px);
 }
 
 .search-input {
@@ -485,9 +490,26 @@ button {
 }
 
 .inventory-scroll {
-  max-height: 760px;
+  max-height: 78vh;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.inventory-action-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #dce6f4;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.compact-summary-card {
+  min-width: 112px;
+  padding: 8px 10px;
 }
 
 .inventory-list {
@@ -504,6 +526,7 @@ button {
   border: 1px solid #dbe4f0;
   border-radius: 14px;
   padding: 14px;
+  cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
@@ -735,6 +758,39 @@ button {
   width: min(100%, 1040px);
 }
 
+.add-assets-modal {
+  width: min(100%, 1180px);
+}
+
+.asset-line-items {
+  display: grid;
+  gap: 8px;
+}
+
+.asset-line-item {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr) 90px 100px;
+  gap: 8px;
+  align-items: center;
+}
+
+.asset-line-item-header {
+  color: #66748f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+.modal-action-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
 .scanner-modal-header {
   display: flex;
   justify-content: space-between;
@@ -816,6 +872,15 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .asset-line-item,
+  .asset-line-item-header {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-line-item-header {
+    display: none;
+  }
+
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
@@ -825,11 +890,12 @@ button {
 @media (max-width: 780px) {
   .brand-banner,
   .dashboard-grid,
+  .inventory-workspace,
   .scan-mode-layout,
   .site-footer,
   .alert {
-    margin-left: 16px;
-    margin-right: 16px;
+    margin-left: 8px;
+    margin-right: 8px;
   }
 
   .brand-banner {
@@ -843,6 +909,7 @@ button {
   .inventory-header,
   .inventory-tools,
   .scanner-modal-header,
+  .inventory-action-strip,
   .scan-mode-toggle-row {
     flex-direction: column;
   }
