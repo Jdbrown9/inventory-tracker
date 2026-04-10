@@ -28,15 +28,11 @@ export default function App() {
   const [editingCategoryCode, setEditingCategoryCode] = useState("");
   const [editingLocationCode, setEditingLocationCode] = useState("");
   const [editingSerialNumber, setEditingSerialNumber] = useState("");
-  const [editingBarcode, setEditingBarcode] = useState("");
-  const [editingReadableId, setEditingReadableId] = useState("");
   const [editingQuantity, setEditingQuantity] = useState(1);
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
   const [editingCheckedOutTo, setEditingCheckedOutTo] = useState("");
-  const [editingCheckedOutAt, setEditingCheckedOutAt] = useState("");
-  const [editingLastCheckedInAt, setEditingLastCheckedInAt] = useState("");
   const [editingLastScanAction, setEditingLastScanAction] = useState("");
 
   // App state for loading, errors, and searching.
@@ -76,7 +72,9 @@ export default function App() {
   const ref = useRef();
 
   useEffect(() => {
-    if (ref.current) {
+    if (!ref.current || !value) return;
+
+    try {
       JsBarcode(ref.current, value, {
         format: "CODE128",
         width: 2,
@@ -84,6 +82,9 @@ export default function App() {
         displayValue: true,
         text: label || value,
       });
+    } catch (error) {
+      console.warn("Unable to render barcode preview:", error);
+      ref.current.innerHTML = "";
     }
   }, [value, label]);
 
@@ -345,30 +346,22 @@ export default function App() {
       setEditingCategoryCode(String(selectedItem["Category Code"] || "").padStart(2, "0"));
       setEditingLocationCode(String(selectedItem["Location Code"] || "").padStart(2, "0"));
       setEditingSerialNumber(selectedItem["Serial Number"] || "");
-      setEditingBarcode(selectedItem.Barcode || "");
-      setEditingReadableId(selectedItem["Readable ID"] || "");
       setEditingQuantity(selectedItem.Quantity || 1);
       setEditingNotes(selectedItem.Notes || "");
       setEditingCondition(selectedItem.Condition || "");
       setEditingStatus(selectedItem.Status || "Active");
       setEditingCheckedOutTo(selectedItem["Checked Out To"] || "");
-      setEditingCheckedOutAt(selectedItem["Checked Out At"] || "");
-      setEditingLastCheckedInAt(selectedItem["Last Checked In At"] || "");
       setEditingLastScanAction(selectedItem["Last Scan Action"] || "");
     } else {
       setEditingItemName("");
       setEditingCategoryCode("");
       setEditingLocationCode("");
       setEditingSerialNumber("");
-      setEditingBarcode("");
-      setEditingReadableId("");
       setEditingQuantity(1);
       setEditingNotes("");
       setEditingCondition("");
       setEditingStatus("Active");
       setEditingCheckedOutTo("");
-      setEditingCheckedOutAt("");
-      setEditingLastCheckedInAt("");
       setEditingLastScanAction("");
     }
   }, [selectedItem]);
@@ -644,6 +637,7 @@ export default function App() {
 
     const categoryCode = editingCategoryCode ? String(editingCategoryCode).padStart(2, "0") : "";
     const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
+    const serialNumber = String(editingSerialNumber || "").trim();
     const quantityValue = Number(editingQuantity);
 
     if (!editingItemName.trim()) {
@@ -656,10 +650,18 @@ export default function App() {
       return;
     }
 
+    if (!serialNumber) {
+      alert("Please enter a serial number.");
+      return;
+    }
+
     if (!Number.isFinite(quantityValue) || quantityValue < 0) {
       alert("Quantity must be a number of 0 or more.");
       return;
     }
+
+    const derivedBarcode = buildBarcode(categoryCode, locationCode, serialNumber);
+    const derivedReadableId = buildReadableId(categoryCode, locationCode, serialNumber);
 
     const updatedInventory = workingInventory.map((item) => {
       if (item.localId !== selectedItem.localId) return item;
@@ -671,16 +673,14 @@ export default function App() {
         "Category Name": getCategoryName(categoryCode) || item["Category Name"],
         "Location Code": locationCode,
         "Location Name": getLocationName(locationCode) || item["Location Name"],
-        "Serial Number": editingSerialNumber,
-        Barcode: editingBarcode.trim(),
-        "Readable ID": editingReadableId.trim(),
+        "Serial Number": serialNumber,
+        Barcode: derivedBarcode,
+        "Readable ID": derivedReadableId,
         Quantity: quantityValue,
         Status: editingStatus,
         Condition: editingCondition,
         Notes: editingNotes,
         "Checked Out To": editingCheckedOutTo,
-        "Checked Out At": editingCheckedOutAt,
-        "Last Checked In At": editingLastCheckedInAt,
         "Last Scan Action": editingLastScanAction,
         "Last Updated": new Date().toISOString(),
       };
@@ -808,6 +808,15 @@ export default function App() {
       setPublishing(false);
     }
   }
+
+  const editingDerivedBarcode =
+    editingCategoryCode && editingLocationCode && editingSerialNumber
+      ? buildBarcode(editingCategoryCode, editingLocationCode, editingSerialNumber)
+      : "";
+  const editingDerivedReadableId =
+    editingCategoryCode && editingLocationCode && editingSerialNumber
+      ? buildReadableId(editingCategoryCode, editingLocationCode, editingSerialNumber)
+      : "";
 
   return (
     <div className="app-shell">
@@ -1170,20 +1179,16 @@ export default function App() {
 
                     <div className="form-group">
                       <label>Barcode</label>
-                      <input
-                        className="input"
-                        value={editingBarcode}
-                        onChange={(e) => setEditingBarcode(e.target.value)}
-                      />
+                      <div className="readonly-field">
+                        {editingDerivedBarcode || "Generated from category, location, and serial number"}
+                      </div>
                     </div>
 
                     <div className="form-group">
                       <label>Readable ID</label>
-                      <input
-                        className="input"
-                        value={editingReadableId}
-                        onChange={(e) => setEditingReadableId(e.target.value)}
-                      />
+                      <div className="readonly-field">
+                        {editingDerivedReadableId || "Generated from category, location, and serial number"}
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -1206,20 +1211,12 @@ export default function App() {
 
                     <div className="form-group">
                       <label>Checked Out At</label>
-                      <input
-                        className="input"
-                        value={editingCheckedOutAt}
-                        onChange={(e) => setEditingCheckedOutAt(e.target.value)}
-                      />
+                      <div className="readonly-field">{selectedItem["Checked Out At"] || "-"}</div>
                     </div>
 
                     <div className="form-group">
                       <label>Last Checked In At</label>
-                      <input
-                        className="input"
-                        value={editingLastCheckedInAt}
-                        onChange={(e) => setEditingLastCheckedInAt(e.target.value)}
-                      />
+                      <div className="readonly-field">{selectedItem["Last Checked In At"] || "-"}</div>
                     </div>
 
                     <div className="form-group">

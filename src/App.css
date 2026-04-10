@@ -660,6 +660,18 @@ button {
   column-gap: 16px;
 }
 
+.readonly-field {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #d8e0ed;
+  background: #f4f7fb;
+  border-radius: 14px;
+  padding: 15px 16px;
+  color: #50617e;
+  display: flex;
+  align-items: center;
+}
+
 .empty-state {
   border: 1px dashed #cfdaea;
   border-radius: 18px;
