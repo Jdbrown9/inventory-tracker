@@ -9,32 +9,44 @@ const API =
 const LOCAL_STORAGE_KEY = "inventoryTrackerDraftData_v1";
 
 export default function App() {
+  // Server-backed data and the current local working draft.
   const [savedInventory, setSavedInventory] = useState([]);
   const [workingInventory, setWorkingInventory] = useState([]);
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
 
+  // Asset intake form values.
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [quantity, setQuantity] = useState(1);
 
+  // Selected item editor values.
   const [selectedItemId, setSelectedItemId] = useState("");
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
 
+  // App state for loading, errors, and searching.
   const [loadingApp, setLoadingApp] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasLoadedLocalDraft, setHasLoadedLocalDraft] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Shared scan state used by both USB and phone-camera flows.
+  const [scanSessionName, setScanSessionName] = useState("");
+  const [scanInputValue, setScanInputValue] = useState("");
+  const [recentScanLog, setRecentScanLog] = useState([]);
+
+  // Camera scanner modal state and the always-ready USB input ref.
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState("");
   const [scannerStatus, setScannerStatus] = useState("Ready to scan.");
   const scannerRef = useRef(null);
+  const usbScanInputRef = useRef(null);
 
+  // Persists the local draft so refreshes do not wipe in-progress work.
   function saveDraftToLocalStorage(inventory) {
     localStorage.setItem(
       LOCAL_STORAGE_KEY,
@@ -45,6 +57,7 @@ export default function App() {
     );
   }
 
+  // Renders a printable barcode preview for the selected item.
   function Barcode({ value, label }) {
   const ref = useRef();
 
@@ -63,14 +76,17 @@ export default function App() {
   return <svg ref={ref}></svg>;
 }
 
+  // Removes the saved local draft after reset or publish.
   function clearDraftFromLocalStorage() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   }
 
+  // Creates a client-side-only ID for items that do not exist in Sheets yet.
   function buildLocalItemId() {
     return `local-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
   }
 
+  // Code lookup helpers keep barcode/ID generation tied to sheet data.
   function getCategoryName(code) {
     const match = categories.find(
       (c) => String(c["Category Code"]).padStart(2, "0") === String(code).padStart(2, "0")
@@ -125,14 +141,38 @@ export default function App() {
     return String(next).padStart(4, "0");
   }
 
+  // Normalizes incoming rows so local-only and scan-tracking fields always exist.
   function normalizeInventoryRows(rows) {
     return rows.map((item, index) => ({
       ...item,
+      "Checked Out To": item["Checked Out To"] || "",
+      "Checked Out At": item["Checked Out At"] || "",
+      "Last Checked In At": item["Last Checked In At"] || "",
+      "Last Scan Action": item["Last Scan Action"] || "",
       localId: item.localId || item.Barcode || item["Readable ID"] || `row-${index}`,
       isLocalOnly: Boolean(item.isLocalOnly),
     }));
   }
 
+  // Keeps a short newest-first activity feed for recent scans.
+  function appendScanLog(message, type) {
+    const entry = {
+      message,
+      type,
+      timestamp: new Date().toISOString(),
+    };
+
+    setRecentScanLog((currentLog) => [entry, ...currentLog].slice(0, 10));
+  }
+
+  // Returns focus to the USB scanner field after scans and modal changes.
+  function focusUsbScanInput() {
+    window.requestAnimationFrame(() => {
+      usbScanInputRef.current?.focus();
+    });
+  }
+
+  // Loads the app from Sheets and restores any saved local draft.
   async function loadAppData() {
     try {
       setLoadingApp(true);
@@ -182,15 +222,30 @@ export default function App() {
     }
   }
 
+  // Initial app bootstrap.
   useEffect(() => {
     loadAppData();
   }, []);
 
+  // Writes local inventory edits to browser storage.
   useEffect(() => {
     if (!hasLoadedLocalDraft) return;
     saveDraftToLocalStorage(workingInventory);
   }, [workingInventory, hasLoadedLocalDraft]);
 
+  // Keeps the USB scanner field ready on first load.
+  useEffect(() => {
+    focusUsbScanInput();
+  }, []);
+
+  // Returns keyboard focus after the camera modal closes.
+  useEffect(() => {
+    if (!scannerOpen) {
+      focusUsbScanInput();
+    }
+  }, [scannerOpen]);
+
+  // Dashboard counts for unpublished additions and edits.
   const pendingSummary = useMemo(() => {
     const savedMap = new Map(savedInventory.map((item) => [item.localId, item]));
     let added = 0;
@@ -215,6 +270,10 @@ export default function App() {
           "Status",
           "Condition",
           "Notes",
+          "Checked Out To",
+          "Checked Out At",
+          "Last Checked In At",
+          "Last Scan Action",
         ];
 
         const changed = fieldsToCheck.some(
@@ -234,6 +293,7 @@ export default function App() {
     };
   }, [workingInventory, savedInventory]);
 
+  // Search filtering across the main inventory list.
   const filteredInventory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
@@ -256,10 +316,12 @@ export default function App() {
     });
   }, [workingInventory, searchTerm]);
 
+  // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
     return workingInventory.find((item) => item.localId === selectedItemId) || null;
   }, [workingInventory, selectedItemId]);
 
+  // Mirrors the selected row into editable field state.
   useEffect(() => {
     if (selectedItem) {
       setEditingNotes(selectedItem.Notes || "");
@@ -272,6 +334,7 @@ export default function App() {
     }
   }, [selectedItem]);
 
+  // Starts and cleans up the phone camera scanner.
   useEffect(() => {
     if (!scannerOpen) return undefined;
 
@@ -309,21 +372,7 @@ export default function App() {
             if (!isMounted) return;
 
             const cleanValue = String(decodedText || "").trim();
-            setSearchTerm(cleanValue);
-
-            const exactMatch = workingInventory.find((item) => {
-              return (
-                String(item.Barcode || "").trim().toLowerCase() === cleanValue.toLowerCase() ||
-                String(item["Readable ID"] || "").trim().toLowerCase() === cleanValue.toLowerCase()
-              );
-            });
-
-            if (exactMatch) {
-              setSelectedItemId(exactMatch.localId);
-              setScannerStatus(`Found ${exactMatch["Item Name"]}.`);
-            } else {
-              setScannerStatus(`Scanned ${cleanValue}. No exact inventory match found yet.`);
-            }
+            processScannedBarcode(cleanValue);
 
             setScannerOpen(false);
           },
@@ -375,8 +424,89 @@ export default function App() {
 
       cleanupScanner();
     };
-  }, [scannerOpen, workingInventory]);
+  }, [scannerOpen, workingInventory, scanSessionName]);
 
+  // Handles check-out/check-in rules after any scanner returns a barcode.
+  function processScannedBarcode(barcode) {
+    const normalizedBarcode = String(barcode || "").trim();
+
+    if (!normalizedBarcode) {
+      const message = "No barcode was provided.";
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
+    const normalizedLookup = normalizedBarcode.toLowerCase();
+    const matchedItem = workingInventory.find((item) => {
+      return (
+        String(item.Barcode || "").trim().toLowerCase() === normalizedLookup ||
+        String(item["Readable ID"] || "").trim().toLowerCase() === normalizedLookup
+      );
+    });
+
+    if (!matchedItem) {
+      const message = `Scanned ${normalizedBarcode}. No inventory match found.`;
+      setSearchTerm(normalizedBarcode);
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
+    if (String(matchedItem.Status || "").trim() !== "Checked Out" && !scanSessionName.trim()) {
+      const message = `Scan blocked for ${matchedItem["Item Name"]}. Enter a checkout name first.`;
+      setSelectedItemId(matchedItem.localId);
+      setSearchTerm(normalizedBarcode);
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextItemState =
+      String(matchedItem.Status || "").trim() === "Checked Out"
+        ? {
+            Status: "Active",
+            "Checked Out To": "",
+            "Checked Out At": "",
+            "Last Checked In At": now,
+            "Last Scan Action": "Checked In",
+            "Last Updated": now,
+          }
+        : {
+            Status: "Checked Out",
+            "Checked Out To": scanSessionName.trim(),
+            "Checked Out At": now,
+            "Last Scan Action": "Checked Out",
+            "Last Updated": now,
+          };
+
+    const updatedInventory = workingInventory.map((item) =>
+      item.localId === matchedItem.localId ? { ...item, ...nextItemState } : item
+    );
+
+    const action = nextItemState["Last Scan Action"];
+    const message =
+      action === "Checked In"
+        ? `${matchedItem["Item Name"]} checked in.`
+        : `${matchedItem["Item Name"]} checked out to ${scanSessionName.trim()}.`;
+
+    setWorkingInventory(updatedInventory);
+    setSelectedItemId(matchedItem.localId);
+    setSearchTerm(normalizedBarcode);
+    setScannerStatus(message);
+    appendScanLog(message, "success");
+  }
+
+  // Lets USB scanners submit through the hidden keyboard-style Enter flow.
+  function handleUsbScanSubmit(event) {
+    event.preventDefault();
+    processScannedBarcode(scanInputValue);
+    setScanInputValue("");
+    focusUsbScanInput();
+  }
+
+  // Creates one or more new local inventory items without publishing yet.
   function addItemLocally() {
     if (!name.trim()) {
       alert("Please enter an item name.");
@@ -418,6 +548,10 @@ export default function App() {
         Status: "Active",
         Condition: "Good",
         Notes: "",
+        "Checked Out To": "",
+        "Checked Out At": "",
+        "Last Checked In At": "",
+        "Last Scan Action": "",
         "Last Updated": new Date().toISOString(),
         isLocalOnly: true,
       };
@@ -437,6 +571,7 @@ export default function App() {
     setQuantity(1);
   }
 
+  // Saves the right-side editor fields into the working draft.
   function updateSelectedItemLocally() {
     if (!selectedItem) return;
 
@@ -455,6 +590,7 @@ export default function App() {
     setWorkingInventory(updatedInventory);
   }
 
+  // Resets the local draft back to the last loaded server state.
   function discardLocalChanges() {
     const confirmed = window.confirm("Discard all unpublished local changes?");
     if (!confirmed) return;
@@ -465,6 +601,7 @@ export default function App() {
     setErrorMessage("");
   }
 
+  // Pushes local additions and edits back to the Apps Script backend.
   async function publishChanges() {
     if (pendingSummary.total === 0) {
       alert("There are no unpublished changes.");
@@ -505,6 +642,10 @@ export default function App() {
             "Status",
             "Condition",
             "Notes",
+            "Checked Out To",
+            "Checked Out At",
+            "Last Checked In At",
+            "Last Scan Action",
           ];
 
           return fieldsToCheck.some(
@@ -525,6 +666,10 @@ export default function App() {
           status: item.Status,
           condition: item.Condition,
           notes: item.Notes,
+          checkedOutTo: item["Checked Out To"],
+          checkedOutAt: item["Checked Out At"],
+          lastCheckedInAt: item["Last Checked In At"],
+          lastScanAction: item["Last Scan Action"],
         }));
 
       const res = await fetch(API, {
@@ -566,6 +711,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* Top banner and publish controls */}
       <header className="brand-banner">
         <div className="brand-banner-top">
           <div>
@@ -610,6 +756,7 @@ export default function App() {
 
       <div className="dashboard-grid">
         <aside className="sidebar">
+          {/* Local asset creation */}
           <section className="panel accent-panel">
             <div className="panel-header">
               <p className="panel-kicker">Asset Intake</p>
@@ -678,6 +825,7 @@ export default function App() {
             </button>
           </section>
 
+          {/* Draft summary and publishing actions */}
           <section className="panel">
             <div className="panel-header">
               <p className="panel-kicker">Draft Queue</p>
@@ -712,9 +860,78 @@ export default function App() {
               Discard Local Changes
             </button>
           </section>
+
+          {/* Unified scan controls for USB and camera workflows */}
+          <section className="panel scan-mode-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Toggle Scan Mode</p>
+              <h2>Toggle Scan Mode</h2>
+              <p>Scan items with a USB scanner or phone camera using one shared workflow.</p>
+            </div>
+
+            <div className="form-group">
+              <label>Checkout Name</label>
+              <input
+                className="input"
+                placeholder="Who is checking items out?"
+                value={scanSessionName}
+                onChange={(e) => setScanSessionName(e.target.value)}
+              />
+            </div>
+
+            <form className="scan-form" onSubmit={handleUsbScanSubmit}>
+              <div className="form-group">
+                <label>USB Scanner Input</label>
+                <input
+                  ref={usbScanInputRef}
+                  className="input"
+                  placeholder="Scan barcode or type readable ID"
+                  value={scanInputValue}
+                  onChange={(e) => setScanInputValue(e.target.value)}
+                  onBlur={focusUsbScanInput}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </div>
+
+              <button className="button button-dark button-full" type="submit">
+                Process USB Scan
+              </button>
+            </form>
+
+            <button className="button button-secondary button-full" onClick={() => setScannerOpen(true)}>
+              Open Camera Scanner
+            </button>
+
+            <div className="scan-status-card">
+              <span className="detail-label">Latest Status</span>
+              <strong>{scannerStatus}</strong>
+            </div>
+
+            <div className="scan-log">
+              <div className="panel-header">
+                <h2>Recent Activity</h2>
+                <p>Latest scan events across USB and camera input.</p>
+              </div>
+
+              {recentScanLog.length === 0 ? (
+                <div className="empty-state">No scans yet. Start with a barcode or readable ID.</div>
+              ) : (
+                recentScanLog.map((entry) => (
+                  <div key={`${entry.timestamp}-${entry.message}`} className={`scan-log-item ${entry.type}`}>
+                    <strong>{entry.message}</strong>
+                    <span>{new Date(entry.timestamp).toLocaleString()}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         </aside>
 
         <main className="main-content">
+          {/* Searchable inventory list */}
           <section className="panel inventory-panel">
             <div className="inventory-header">
               <div>
@@ -762,7 +979,11 @@ export default function App() {
 
                         <div className="inventory-card-right">
                           {item.isLocalOnly && <span className="badge badge-new">NEW</span>}
-                          <span className={`badge badge-status status-${String(item.Status || "").toLowerCase()}`}>
+                          <span
+                            className={`badge badge-status status-${String(item.Status || "")
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")}`}
+                          >
                             {item.Status}
                           </span>
                         </div>
@@ -789,6 +1010,7 @@ export default function App() {
             </div>
           </section>
 
+          {/* Selected asset detail and local edit form */}
           <section className="panel">
             <div className="panel-header">
               <p className="panel-kicker">Asset Details</p>
@@ -811,6 +1033,10 @@ export default function App() {
                     />
                     <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
                     <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
+                    <div><strong>Checked Out To:</strong> {selectedItem["Checked Out To"] || "-"}</div>
+                    <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
+                    <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
+                    <div><strong>Last Scan Action:</strong> {selectedItem["Last Scan Action"] || "-"}</div>
                   </div>
                 </div>
 
@@ -823,6 +1049,7 @@ export default function App() {
                       onChange={(e) => setEditingStatus(e.target.value)}
                     >
                       <option value="Active">Active</option>
+                      <option value="Checked Out">Checked Out</option>
                       <option value="Missing">Missing</option>
                       <option value="Retired">Retired</option>
                     </select>
@@ -867,6 +1094,7 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Phone camera scanning modal */}
       {scannerOpen && (
         <div className="scanner-modal-overlay" onClick={() => setScannerOpen(false)}>
           <div className="scanner-modal" onClick={(e) => e.stopPropagation()}>

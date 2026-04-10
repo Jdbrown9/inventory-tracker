@@ -332,6 +332,70 @@ button {
   border-radius: 18px;
 }
 
+.scan-mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scan-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-status-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #dce6f4;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f6fc 100%);
+  display: grid;
+  gap: 6px;
+}
+
+.scan-status-card strong {
+  color: #13263f;
+  font-size: 16px;
+}
+
+.scan-log {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scan-log .panel-header {
+  margin-bottom: 0;
+}
+
+.scan-log-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #dce6f4;
+  background: #f8fafc;
+}
+
+.scan-log-item strong {
+  color: #13263f;
+}
+
+.scan-log-item span {
+  color: #66748f;
+  font-size: 12px;
+}
+
+.scan-log-item.success {
+  background: #edf9f2;
+  border-color: #cde7d7;
+}
+
+.scan-log-item.warning {
+  background: #fff7eb;
+  border-color: #f0dcc0;
+}
+
 .summary-label {
   display: block;
   font-size: 12px;
@@ -504,6 +568,11 @@ button {
 .status-retired {
   background: #f1f2f5;
   color: #5e6675;
+}
+
+.status-checked-out {
+  background: #eef1ff;
+  color: #3f4ea6;
 }
 
 .detail-grid {
