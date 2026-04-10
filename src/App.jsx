@@ -45,7 +45,7 @@ export default function App() {
     );
   }
 
-  function Barcode({ value }) {
+  function Barcode({ value, label }) {
   const ref = useRef();
 
   useEffect(() => {
@@ -55,9 +55,10 @@ export default function App() {
         width: 2,
         height: 60,
         displayValue: true,
+        text: label || value,
       });
     }
-  }, [value]);
+  }, [value, label]);
 
   return <svg ref={ref}></svg>;
 }
@@ -804,7 +805,10 @@ export default function App() {
                   <div className="summary-lines">
                     <div><strong>Readable ID:</strong> {selectedItem["Readable ID"]}</div>
                     <div><strong>Barcode:</strong> {selectedItem.Barcode}</div>
-                    <Barcode value={selectedItem.Barcode} />
+                    <Barcode
+                      value={selectedItem.Barcode}
+                       label={selectedItem["Readable ID"]}
+                    />
                     <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
                     <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
                   </div>
