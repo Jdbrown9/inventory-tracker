@@ -274,8 +274,8 @@ button {
   width: 100%;
   border: 1px solid #d8e0ed;
   background: #fbfcfe;
-  border-radius: 14px;
-  padding: 15px 16px;
+  border-radius: 10px;
+  padding: 9px 11px;
   color: #172033;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
@@ -490,9 +490,9 @@ button {
 }
 
 .inventory-scroll {
-  max-height: 78vh;
+  max-height: 80vh;
   overflow-y: auto;
-  padding-right: 6px;
+  padding-right: 4px;
 }
 
 .inventory-action-strip {
@@ -514,7 +514,7 @@ button {
 
 .inventory-list {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .inventory-card {
@@ -524,8 +524,8 @@ button {
     linear-gradient(180deg, rgba(16, 35, 63, 0.02) 0%, rgba(16, 35, 63, 0) 100%),
     #fcfdff;
   border: 1px solid #dbe4f0;
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 11px;
+  padding: 9px 12px;
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -550,13 +550,13 @@ button {
 .inventory-card-top {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
 }
 
 .inventory-card h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: -0.02em;
   color: #10233f;
 }
@@ -570,23 +570,23 @@ button {
 }
 
 .edit-asset-button {
-  padding: 6px 10px;
-  min-height: 30px;
+  padding: 5px 9px;
+  min-height: 28px;
 }
 
 .meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 5px;
+  margin-top: 4px;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 8px;
+  padding: 4px 7px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
 }
@@ -635,13 +635,13 @@ button {
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .detail-label {
   display: block;
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #74839d;
@@ -652,7 +652,7 @@ button {
   display: block;
   font-weight: 600;
   color: #23304c;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .editor-layout {
