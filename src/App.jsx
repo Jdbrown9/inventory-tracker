@@ -7,6 +7,7 @@ const API =
   "https://script.google.com/macros/s/AKfycbwIxLeglf9YlAPQ9fhga_jF15ZbIcdU4gvKhQfwI1qrwuTf5SwxMXYy1Wa8by9-kXnC/exec";
 
 const LOCAL_STORAGE_KEY = "inventoryTrackerDraftData_v1";
+const CHECKOUT_NAMES = ["Jayden", "Andrew", "Nate", "Anna", "Zach"];
 
 export default function App() {
   // Server-backed data and the current local working draft.
@@ -1092,13 +1093,19 @@ export default function App() {
 
             <div className="form-group">
               <label>Checkout Name</label>
-              <input
+              <select
                 className="input"
-                placeholder="Who is checking items out?"
                 value={scanSessionName}
                 onChange={(e) => setScanSessionName(e.target.value)}
                 disabled={!scanModeEnabled}
-              />
+              >
+                <option value="">Select checkout name</option>
+                {CHECKOUT_NAMES.map((checkoutName) => (
+                  <option key={checkoutName} value={checkoutName}>
+                    {checkoutName}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <form className="scan-form" onSubmit={handleUsbScanSubmit}>
