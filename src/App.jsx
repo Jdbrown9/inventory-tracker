@@ -46,6 +46,8 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasLoadedLocalDraft, setHasLoadedLocalDraft] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [activeTab, setActiveTab] = useState("inventory");
 
   // Shared scan state used by both USB and phone-camera flows.
@@ -331,24 +333,33 @@ export default function App() {
   const filteredInventory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    if (!term) return workingInventory;
-
     return workingInventory.filter((item) => {
-      return [
-        item["Item Name"],
-        item["Readable ID"],
-        item["Barcode"],
-        item["Category Name"],
-        item["Location Name"],
-        item["Status"],
-        item["Condition"],
-        item["Notes"],
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(term);
+      const matchesSearch =
+        !term ||
+        [
+          item["Item Name"],
+          item["Readable ID"],
+          item["Barcode"],
+          item["Category Name"],
+          item["Location Name"],
+          item["Status"],
+          item["Condition"],
+          item["Notes"],
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+
+      const matchesCategory =
+        !categoryFilter ||
+        String(item["Category Code"] || "").padStart(2, "0") === String(categoryFilter).padStart(2, "0");
+      const matchesLocation =
+        !locationFilter ||
+        String(item["Location Code"] || "").padStart(2, "0") === String(locationFilter).padStart(2, "0");
+
+      return matchesSearch && matchesCategory && matchesLocation;
     });
-  }, [workingInventory, searchTerm]);
+  }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
 
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
@@ -955,6 +966,45 @@ export default function App() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <select
+                  className="input filter-input"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  disabled={loadingApp}
+                >
+                  <option value="">All categories</option>
+                  {categories.map((c, i) => (
+                    <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
+                      {c["Category Name"]}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="input filter-input"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  disabled={loadingApp}
+                >
+                  <option value="">All locations</option>
+                  {locations.map((l, i) => (
+                    <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
+                      {l["Location Name"]}
+                    </option>
+                  ))}
+                </select>
+                {(categoryFilter || locationFilter || searchTerm) && (
+                  <button
+                    className="button button-secondary scan-button"
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setCategoryFilter("");
+                      setLocationFilter("");
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
                 <button
                   className="button button-primary scan-button"
                   onClick={() => setAddAssetModalOpen(true)}

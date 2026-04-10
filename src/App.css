@@ -485,6 +485,10 @@ button {
   max-width: none;
 }
 
+.filter-input {
+  flex: 0 1 190px;
+}
+
 .scan-button {
   white-space: nowrap;
 }
