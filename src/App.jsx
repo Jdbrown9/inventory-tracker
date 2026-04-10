@@ -27,6 +27,7 @@ const DEFAULT_LABEL_OPTIONS = {
   showReadableId: true,
   showBarcode: true,
   showLocation: false,
+  showPropertyText: false,
 };
 
 export default function App() {
@@ -1458,6 +1459,7 @@ export default function App() {
                   ["showReadableId", "Show readable ID"],
                   ["showItemName", "Show item name"],
                   ["showLocation", "Show location"],
+                  ["showPropertyText", "Show property notice"],
                 ].map(([field, label]) => (
                   <label className="label-option" key={field}>
                     <input
@@ -1528,6 +1530,11 @@ export default function App() {
                             )}
                             {labelOptions.showLocation && (
                               <span className="preview-label-location">{slot.item["Location Name"]}</span>
+                            )}
+                            {labelOptions.showPropertyText && (
+                              <span className="preview-label-property">
+                                Property of Allen County War Memorial Coliseum
+                              </span>
                             )}
                           </>
                         ) : (
