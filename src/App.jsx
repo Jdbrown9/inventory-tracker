@@ -34,6 +34,7 @@ export default function App() {
   const [editingStatus, setEditingStatus] = useState("Active");
   const [editingCheckedOutTo, setEditingCheckedOutTo] = useState("");
   const [editingLastScanAction, setEditingLastScanAction] = useState("");
+  const [assetEditorOpen, setAssetEditorOpen] = useState(false);
 
   // App state for loading, errors, and searching.
   const [loadingApp, setLoadingApp] = useState(true);
@@ -566,6 +567,17 @@ export default function App() {
     });
   }
 
+  function openAssetEditor(itemId) {
+    setSelectedItemId(itemId);
+    setAssetEditorOpen(true);
+  }
+
+  function saveAssetEditor() {
+    if (updateSelectedItemLocally()) {
+      setAssetEditorOpen(false);
+    }
+  }
+
   // Creates one or more new local inventory items without publishing yet.
   function addItemLocally() {
     if (!name.trim()) {
@@ -633,7 +645,7 @@ export default function App() {
 
   // Saves the right-side editor fields into the working draft.
   function updateSelectedItemLocally() {
-    if (!selectedItem) return;
+    if (!selectedItem) return false;
 
     const categoryCode = editingCategoryCode ? String(editingCategoryCode).padStart(2, "0") : "";
     const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
@@ -642,22 +654,22 @@ export default function App() {
 
     if (!editingItemName.trim()) {
       alert("Please enter an item name.");
-      return;
+      return false;
     }
 
     if (!categoryCode || !locationCode) {
       alert("Please select a category and location.");
-      return;
+      return false;
     }
 
     if (!serialNumber) {
       alert("Please enter a serial number.");
-      return;
+      return false;
     }
 
     if (!Number.isFinite(quantityValue) || quantityValue < 0) {
       alert("Quantity must be a number of 0 or more.");
-      return;
+      return false;
     }
 
     const derivedBarcode = buildBarcode(categoryCode, locationCode, serialNumber);
@@ -687,6 +699,7 @@ export default function App() {
     });
 
     setWorkingInventory(updatedInventory);
+    return true;
   }
 
   // Resets the local draft back to the last loaded server state.
@@ -1020,12 +1033,11 @@ export default function App() {
               ) : (
                 <div className="inventory-list">
                   {filteredInventory.map((item) => (
-                    <button
+                    <article
                       key={item.localId}
                       className={`inventory-card ${selectedItemId === item.localId ? "selected" : ""} ${
                         item.isLocalOnly ? "new-item" : ""
                       }`}
-                      onClick={() => setSelectedItemId(item.localId)}
                     >
                       <div className="inventory-card-top">
                         <div>
@@ -1045,6 +1057,13 @@ export default function App() {
                           >
                             {item.Status}
                           </span>
+                          <button
+                            className="button button-secondary edit-asset-button"
+                            type="button"
+                            onClick={() => openAssetEditor(item.localId)}
+                          >
+                            Edit
+                          </button>
                         </div>
                       </div>
 
@@ -1062,193 +1081,13 @@ export default function App() {
                           <span className="detail-value">{item.Condition || "—"}</span>
                         </div>
                       </div>
-                    </button>
+                    </article>
                   ))}
                 </div>
               )}
             </div>
           </section>
 
-          {/* Selected asset detail and local edit form */}
-          <section className="panel">
-            <div className="panel-header">
-              <p className="panel-kicker">Asset Details</p>
-              <h2>Edit Selected Asset</h2>
-              <p>Changes stay local until you publish.</p>
-            </div>
-
-            {!selectedItem ? (
-              <div className="empty-state">Select an item from the inventory list.</div>
-            ) : (
-              <div className="editor-layout">
-                <div className="selected-item-summary">
-                  <h3>{selectedItem["Item Name"]}</h3>
-                  <div className="summary-lines">
-                    <div><strong>Readable ID:</strong> {selectedItem["Readable ID"]}</div>
-                    <div><strong>Barcode:</strong> {selectedItem.Barcode}</div>
-                    <Barcode
-                      value={selectedItem.Barcode}
-                       label={selectedItem["Readable ID"]}
-                    />
-                    <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
-                    <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
-                    <div><strong>Checked Out To:</strong> {selectedItem["Checked Out To"] || "-"}</div>
-                    <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
-                    <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
-                    <div><strong>Last Scan Action:</strong> {selectedItem["Last Scan Action"] || "-"}</div>
-                  </div>
-                </div>
-
-                <div className="editor-fields">
-                  <div className="editor-field-grid">
-                    <div className="form-group">
-                      <label>Item Name</label>
-                      <input
-                        className="input"
-                        value={editingItemName}
-                        onChange={(e) => setEditingItemName(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Status</label>
-                      <select
-                        className="input"
-                        value={editingStatus}
-                        onChange={(e) => setEditingStatus(e.target.value)}
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Checked Out">Checked Out</option>
-                        <option value="Missing">Missing</option>
-                        <option value="Retired">Retired</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Category</label>
-                      <select
-                        className="input"
-                        value={editingCategoryCode}
-                        onChange={(e) => setEditingCategoryCode(e.target.value)}
-                      >
-                        <option value="">Select category</option>
-                        {categories.map((c, i) => (
-                          <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
-                            {c["Category Name"]} ({String(c["Category Code"]).padStart(2, "0")})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Location</label>
-                      <select
-                        className="input"
-                        value={editingLocationCode}
-                        onChange={(e) => setEditingLocationCode(e.target.value)}
-                      >
-                        <option value="">Select location</option>
-                        {locations.map((l, i) => (
-                          <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
-                            {l["Location Name"]} ({String(l["Location Code"]).padStart(2, "0")})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Serial Number</label>
-                      <input
-                        className="input"
-                        value={editingSerialNumber}
-                        onChange={(e) => setEditingSerialNumber(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Quantity</label>
-                      <input
-                        className="input"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={editingQuantity}
-                        onChange={(e) => setEditingQuantity(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Barcode</label>
-                      <div className="readonly-field">
-                        {editingDerivedBarcode || "Generated from category, location, and serial number"}
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Readable ID</label>
-                      <div className="readonly-field">
-                        {editingDerivedReadableId || "Generated from category, location, and serial number"}
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Condition</label>
-                      <input
-                        className="input"
-                        value={editingCondition}
-                        onChange={(e) => setEditingCondition(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Checked Out To</label>
-                      <input
-                        className="input"
-                        value={editingCheckedOutTo}
-                        onChange={(e) => setEditingCheckedOutTo(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Checked Out At</label>
-                      <div className="readonly-field">{selectedItem["Checked Out At"] || "-"}</div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Last Checked In At</label>
-                      <div className="readonly-field">{selectedItem["Last Checked In At"] || "-"}</div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Last Scan Action</label>
-                      <select
-                        className="input"
-                        value={editingLastScanAction}
-                        onChange={(e) => setEditingLastScanAction(e.target.value)}
-                      >
-                        <option value="">None</option>
-                        <option value="Checked In">Checked In</option>
-                        <option value="Checked Out">Checked Out</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Notes</label>
-                    <textarea
-                      className="input textarea"
-                      value={editingNotes}
-                      onChange={(e) => setEditingNotes(e.target.value)}
-                    />
-                  </div>
-
-                  <button className="button button-dark" onClick={updateSelectedItemLocally}>
-                    Save All Local Details
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
         </main>
         </div>
       ) : (
@@ -1363,6 +1202,190 @@ export default function App() {
           <span>260-482-9502</span>
         </div>
       </footer>
+
+      {/* Asset editor modal */}
+      {assetEditorOpen && selectedItem && (
+        <div className="scanner-modal-overlay" onClick={() => setAssetEditorOpen(false)}>
+          <div className="scanner-modal asset-editor-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="scanner-modal-header">
+              <div>
+                <p className="panel-kicker">Asset Details</p>
+                <h2>Edit {selectedItem["Item Name"]}</h2>
+                <p>Barcode and readable ID are generated from category, location, and serial number.</p>
+              </div>
+
+              <button className="button button-secondary scanner-close" onClick={() => setAssetEditorOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="editor-layout">
+              <div className="selected-item-summary">
+                <h3>{selectedItem["Item Name"]}</h3>
+                <div className="summary-lines">
+                  <div><strong>Readable ID:</strong> {selectedItem["Readable ID"]}</div>
+                  <div><strong>Barcode:</strong> {selectedItem.Barcode}</div>
+                  <Barcode value={selectedItem.Barcode} label={selectedItem["Readable ID"]} />
+                  <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
+                  <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
+                  <div><strong>Checked Out To:</strong> {selectedItem["Checked Out To"] || "-"}</div>
+                  <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
+                  <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
+                  <div><strong>Last Scan Action:</strong> {selectedItem["Last Scan Action"] || "-"}</div>
+                </div>
+              </div>
+
+              <div className="editor-fields">
+                <div className="editor-field-grid">
+                  <div className="form-group">
+                    <label>Item Name</label>
+                    <input
+                      className="input"
+                      value={editingItemName}
+                      onChange={(e) => setEditingItemName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select
+                      className="input"
+                      value={editingStatus}
+                      onChange={(e) => setEditingStatus(e.target.value)}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Checked Out">Checked Out</option>
+                      <option value="Missing">Missing</option>
+                      <option value="Retired">Retired</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select
+                      className="input"
+                      value={editingCategoryCode}
+                      onChange={(e) => setEditingCategoryCode(e.target.value)}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((c, i) => (
+                        <option key={i} value={String(c["Category Code"]).padStart(2, "0")}>
+                          {c["Category Name"]} ({String(c["Category Code"]).padStart(2, "0")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Location</label>
+                    <select
+                      className="input"
+                      value={editingLocationCode}
+                      onChange={(e) => setEditingLocationCode(e.target.value)}
+                    >
+                      <option value="">Select location</option>
+                      {locations.map((l, i) => (
+                        <option key={i} value={String(l["Location Code"]).padStart(2, "0")}>
+                          {l["Location Name"]} ({String(l["Location Code"]).padStart(2, "0")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Serial Number</label>
+                    <input
+                      className="input"
+                      value={editingSerialNumber}
+                      onChange={(e) => setEditingSerialNumber(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Quantity</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={editingQuantity}
+                      onChange={(e) => setEditingQuantity(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Barcode</label>
+                    <div className="readonly-field">
+                      {editingDerivedBarcode || "Generated from category, location, and serial number"}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Readable ID</label>
+                    <div className="readonly-field">
+                      {editingDerivedReadableId || "Generated from category, location, and serial number"}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Condition</label>
+                    <input
+                      className="input"
+                      value={editingCondition}
+                      onChange={(e) => setEditingCondition(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Checked Out To</label>
+                    <input
+                      className="input"
+                      value={editingCheckedOutTo}
+                      onChange={(e) => setEditingCheckedOutTo(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Checked Out At</label>
+                    <div className="readonly-field">{selectedItem["Checked Out At"] || "-"}</div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Last Checked In At</label>
+                    <div className="readonly-field">{selectedItem["Last Checked In At"] || "-"}</div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Last Scan Action</label>
+                    <select
+                      className="input"
+                      value={editingLastScanAction}
+                      onChange={(e) => setEditingLastScanAction(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Checked In">Checked In</option>
+                      <option value="Checked Out">Checked Out</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    className="input textarea"
+                    value={editingNotes}
+                    onChange={(e) => setEditingNotes(e.target.value)}
+                  />
+                </div>
+
+                <button className="button button-dark" onClick={saveAssetEditor}>
+                  Save All Local Details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Phone camera scanning modal */}
       {scannerOpen && (
