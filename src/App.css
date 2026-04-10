@@ -165,6 +165,8 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .brand-nav-item.active {
@@ -188,6 +190,15 @@ button {
 .dashboard-grid {
   display: grid;
   grid-template-columns: 420px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.scan-mode-layout {
+  margin-left: 24px;
+  margin-right: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   gap: 28px;
   align-items: start;
 }
@@ -336,6 +347,23 @@ button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.scan-mode-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid #dce6f4;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f0f5fa 100%);
+}
+
+.scan-mode-toggle-label {
+  display: block;
+  color: #13263f;
+  font-size: 18px;
 }
 
 .scan-form {
@@ -737,6 +765,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .scan-mode-layout {
+    grid-template-columns: 1fr;
+  }
+
   .inventory-panel {
     min-height: 0;
   }
@@ -758,6 +790,7 @@ button {
 @media (max-width: 780px) {
   .brand-banner,
   .dashboard-grid,
+  .scan-mode-layout,
   .site-footer,
   .alert {
     margin-left: 16px;
@@ -774,7 +807,8 @@ button {
 
   .inventory-header,
   .inventory-tools,
-  .scanner-modal-header {
+  .scanner-modal-header,
+  .scan-mode-toggle-row {
     flex-direction: column;
   }
 

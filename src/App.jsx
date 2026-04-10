@@ -33,11 +33,13 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasLoadedLocalDraft, setHasLoadedLocalDraft] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("inventory");
 
   // Shared scan state used by both USB and phone-camera flows.
   const [scanSessionName, setScanSessionName] = useState("");
   const [scanInputValue, setScanInputValue] = useState("");
   const [recentScanLog, setRecentScanLog] = useState([]);
+  const [scanModeEnabled, setScanModeEnabled] = useState(false);
 
   // Camera scanner modal state and the always-ready USB input ref.
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -235,15 +237,17 @@ export default function App() {
 
   // Keeps the USB scanner field ready on first load.
   useEffect(() => {
-    focusUsbScanInput();
-  }, []);
+    if (activeTab === "scan" && scanModeEnabled) {
+      focusUsbScanInput();
+    }
+  }, [activeTab, scanModeEnabled]);
 
   // Returns keyboard focus after the camera modal closes.
   useEffect(() => {
-    if (!scannerOpen) {
+    if (!scannerOpen && activeTab === "scan" && scanModeEnabled) {
       focusUsbScanInput();
     }
-  }, [scannerOpen]);
+  }, [scannerOpen, activeTab, scanModeEnabled]);
 
   // Dashboard counts for unpublished additions and edits.
   const pendingSummary = useMemo(() => {
@@ -337,6 +341,7 @@ export default function App() {
   // Starts and cleans up the phone camera scanner.
   useEffect(() => {
     if (!scannerOpen) return undefined;
+    if (!scanModeEnabled) return undefined;
 
     if (!window.isSecureContext) {
       setScannerError("Camera scanning requires HTTPS or localhost.");
@@ -424,10 +429,17 @@ export default function App() {
 
       cleanupScanner();
     };
-  }, [scannerOpen, workingInventory, scanSessionName]);
+  }, [scannerOpen, workingInventory, scanSessionName, scanModeEnabled]);
 
   // Handles check-out/check-in rules after any scanner returns a barcode.
   function processScannedBarcode(barcode) {
+    if (!scanModeEnabled) {
+      const message = "Enable scan mode to process barcode scans.";
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
     const normalizedBarcode = String(barcode || "").trim();
 
     if (!normalizedBarcode) {
@@ -501,9 +513,29 @@ export default function App() {
   // Lets USB scanners submit through the hidden keyboard-style Enter flow.
   function handleUsbScanSubmit(event) {
     event.preventDefault();
+    if (!scanModeEnabled) {
+      setScannerStatus("Enable scan mode to accept USB scans.");
+      focusUsbScanInput();
+      return;
+    }
     processScannedBarcode(scanInputValue);
     setScanInputValue("");
     focusUsbScanInput();
+  }
+
+  function handleScanModeToggle() {
+    setScanModeEnabled((currentValue) => {
+      const nextValue = !currentValue;
+
+      if (!nextValue) {
+        setScannerOpen(false);
+        setScannerStatus("Scan mode disabled.");
+      } else {
+        setScannerStatus("Scan mode enabled. Ready to scan.");
+      }
+
+      return nextValue;
+    });
   }
 
   // Creates one or more new local inventory items without publishing yet.
@@ -746,16 +778,28 @@ export default function App() {
         </div>
 
         <div className="brand-nav">
-          <span className="brand-nav-item active">Inventory</span>
-          <span className="brand-nav-item">AV Department</span>
-          <span className="brand-nav-item">Operations Portal</span>
+          <button
+            className={`brand-nav-item ${activeTab === "inventory" ? "active" : ""}`}
+            onClick={() => setActiveTab("inventory")}
+            type="button"
+          >
+            Inventory
+          </button>
+          <button
+            className={`brand-nav-item ${activeTab === "scan" ? "active" : ""}`}
+            onClick={() => setActiveTab("scan")}
+            type="button"
+          >
+            Scan Mode
+          </button>
         </div>
       </header>
 
       {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
 
-      <div className="dashboard-grid">
-        <aside className="sidebar">
+      {activeTab === "inventory" ? (
+        <div className="dashboard-grid">
+          <aside className="sidebar">
           {/* Local asset creation */}
           <section className="panel accent-panel">
             <div className="panel-header">
@@ -860,74 +904,6 @@ export default function App() {
               Discard Local Changes
             </button>
           </section>
-
-          {/* Unified scan controls for USB and camera workflows */}
-          <section className="panel scan-mode-panel">
-            <div className="panel-header">
-              <p className="panel-kicker">Toggle Scan Mode</p>
-              <h2>Toggle Scan Mode</h2>
-              <p>Scan items with a USB scanner or phone camera using one shared workflow.</p>
-            </div>
-
-            <div className="form-group">
-              <label>Checkout Name</label>
-              <input
-                className="input"
-                placeholder="Who is checking items out?"
-                value={scanSessionName}
-                onChange={(e) => setScanSessionName(e.target.value)}
-              />
-            </div>
-
-            <form className="scan-form" onSubmit={handleUsbScanSubmit}>
-              <div className="form-group">
-                <label>USB Scanner Input</label>
-                <input
-                  ref={usbScanInputRef}
-                  className="input"
-                  placeholder="Scan barcode or type readable ID"
-                  value={scanInputValue}
-                  onChange={(e) => setScanInputValue(e.target.value)}
-                  onBlur={focusUsbScanInput}
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                />
-              </div>
-
-              <button className="button button-dark button-full" type="submit">
-                Process USB Scan
-              </button>
-            </form>
-
-            <button className="button button-secondary button-full" onClick={() => setScannerOpen(true)}>
-              Open Camera Scanner
-            </button>
-
-            <div className="scan-status-card">
-              <span className="detail-label">Latest Status</span>
-              <strong>{scannerStatus}</strong>
-            </div>
-
-            <div className="scan-log">
-              <div className="panel-header">
-                <h2>Recent Activity</h2>
-                <p>Latest scan events across USB and camera input.</p>
-              </div>
-
-              {recentScanLog.length === 0 ? (
-                <div className="empty-state">No scans yet. Start with a barcode or readable ID.</div>
-              ) : (
-                recentScanLog.map((entry) => (
-                  <div key={`${entry.timestamp}-${entry.message}`} className={`scan-log-item ${entry.type}`}>
-                    <strong>{entry.message}</strong>
-                    <span>{new Date(entry.timestamp).toLocaleString()}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
         </aside>
 
         <main className="main-content">
@@ -947,8 +923,14 @@ export default function App() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <button className="button button-dark scan-button" onClick={() => setScannerOpen(true)}>
-                  Scan Barcode
+                <button
+                  className="button button-dark scan-button"
+                  onClick={() => {
+                    setActiveTab("scan");
+                    setScanModeEnabled(true);
+                  }}
+                >
+                  Open Scan Mode
                 </button>
               </div>
             </div>
@@ -1081,7 +1063,107 @@ export default function App() {
             )}
           </section>
         </main>
-      </div>
+        </div>
+      ) : (
+        <div className="scan-mode-layout">
+          {/* Unified scan controls for USB and camera workflows */}
+          <section className="panel scan-mode-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Scan Workspace</p>
+              <h2>Toggle Scan Mode</h2>
+              <p>Use this tab to check items in and out with either scanner workflow.</p>
+            </div>
+
+            <div className="scan-mode-toggle-row">
+              <div>
+                <span className="detail-label">Scan Mode</span>
+                <strong className="scan-mode-toggle-label">
+                  {scanModeEnabled ? "Enabled" : "Disabled"}
+                </strong>
+              </div>
+              <button
+                className={`button ${scanModeEnabled ? "button-secondary" : "button-dark"}`}
+                onClick={handleScanModeToggle}
+                type="button"
+              >
+                {scanModeEnabled ? "Disable Scan Mode" : "Enable Scan Mode"}
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Checkout Name</label>
+              <input
+                className="input"
+                placeholder="Who is checking items out?"
+                value={scanSessionName}
+                onChange={(e) => setScanSessionName(e.target.value)}
+                disabled={!scanModeEnabled}
+              />
+            </div>
+
+            <form className="scan-form" onSubmit={handleUsbScanSubmit}>
+              <div className="form-group">
+                <label>USB Scanner Input</label>
+                <input
+                  ref={usbScanInputRef}
+                  className="input"
+                  placeholder="Scan barcode or type readable ID"
+                  value={scanInputValue}
+                  onChange={(e) => setScanInputValue(e.target.value)}
+                  onBlur={() => {
+                    if (scanModeEnabled) {
+                      focusUsbScanInput();
+                    }
+                  }}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  disabled={!scanModeEnabled}
+                />
+              </div>
+
+              <button className="button button-dark button-full" type="submit" disabled={!scanModeEnabled}>
+                Process USB Scan
+              </button>
+            </form>
+
+            <button
+              className="button button-secondary button-full"
+              onClick={() => setScannerOpen(true)}
+              disabled={!scanModeEnabled}
+            >
+              Open Camera Scanner
+            </button>
+
+            <div className="scan-status-card">
+              <span className="detail-label">Latest Status</span>
+              <strong>{scannerStatus}</strong>
+            </div>
+          </section>
+
+          <section className="panel scan-mode-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Recent Activity</p>
+              <h2>Scan Activity</h2>
+              <p>Latest scan events across USB and camera input.</p>
+            </div>
+
+            <div className="scan-log">
+              {recentScanLog.length === 0 ? (
+                <div className="empty-state">No scans yet. Start with a barcode or readable ID.</div>
+              ) : (
+                recentScanLog.map((entry) => (
+                  <div key={`${entry.timestamp}-${entry.message}`} className={`scan-log-item ${entry.type}`}>
+                    <strong>{entry.message}</strong>
+                    <span>{new Date(entry.timestamp).toLocaleString()}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       <footer className="site-footer">
         <div>
