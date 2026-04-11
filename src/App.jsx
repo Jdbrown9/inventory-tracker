@@ -1837,7 +1837,7 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <div className="asset-line-item" key={lineItem.lineId}>
                   <input
                     className="input"
-                    placeholder="Shure ULXD4 Receiver"
+                    placeholder="Add item name"
                     value={lineItem.name}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "name", e.target.value)}
                   />
