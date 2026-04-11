@@ -202,6 +202,7 @@ export default function App() {
   const [editingLocationCode, setEditingLocationCode] = useState("");
   const [editingSerialNumber, setEditingSerialNumber] = useState("");
   const [editingQuantity, setEditingQuantity] = useState(1);
+  const [editingEstimatedValue, setEditingEstimatedValue] = useState("");
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
@@ -403,6 +404,7 @@ export default function App() {
       "Checked Out At": item["Checked Out At"] || "",
       "Last Checked In At": item["Last Checked In At"] || "",
       "Last Scan Action": item["Last Scan Action"] || "",
+      "Estimated Value": item["Estimated Value"] || "",
       localId: item.localId || item.Barcode || item["Readable ID"] || `row-${index}`,
       isLocalOnly: Boolean(item.isLocalOnly),
     }));
@@ -531,6 +533,7 @@ export default function App() {
           "Checked Out At",
           "Last Checked In At",
           "Last Scan Action",
+          "Estimated Value",
         ];
 
         const changed = fieldsToCheck.some(
@@ -549,6 +552,20 @@ export default function App() {
       total: added + edited,
     };
   }, [workingInventory, savedInventory]);
+
+  const totalEstimatedValue = useMemo(() => {
+    return workingInventory.reduce((sum, item) => {
+      const value = Number(item["Estimated Value"] || 0);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+  }, [workingInventory]);
+
+  const formattedTotalEstimatedValue = useMemo(() => {
+    return totalEstimatedValue.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
+  }, [totalEstimatedValue]);
 
   // Search filtering across the main inventory list.
   const filteredInventory = useMemo(() => {
@@ -623,6 +640,7 @@ export default function App() {
       setEditingLocationCode(String(selectedItem["Location Code"] || "").padStart(2, "0"));
       setEditingSerialNumber(selectedItem["Serial Number"] || "");
       setEditingQuantity(selectedItem.Quantity || 1);
+      setEditingEstimatedValue(selectedItem["Estimated Value"] || "");
       setEditingNotes(selectedItem.Notes || "");
       setEditingCondition(selectedItem.Condition || "");
       setEditingStatus(selectedItem.Status || "Active");
@@ -634,6 +652,7 @@ export default function App() {
       setEditingLocationCode("");
       setEditingSerialNumber("");
       setEditingQuantity(1);
+      setEditingEstimatedValue("");
       setEditingNotes("");
       setEditingCondition("");
       setEditingStatus("Active");
@@ -998,6 +1017,7 @@ export default function App() {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
+          "Estimated Value": "",
           Status: "Active",
           Condition: "Good",
           Notes: "",
@@ -1035,6 +1055,8 @@ export default function App() {
     const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
     const serialNumber = String(editingSerialNumber || "").trim();
     const quantityValue = Number(editingQuantity);
+    const estimatedValueRaw = String(editingEstimatedValue ?? "").trim();
+    const estimatedValueNumber = estimatedValueRaw === "" ? "" : Number(estimatedValueRaw);
 
     if (!editingItemName.trim()) {
       alert("Please enter an item name.");
@@ -1056,6 +1078,11 @@ export default function App() {
       return false;
     }
 
+    if (estimatedValueRaw !== "" && (!Number.isFinite(estimatedValueNumber) || estimatedValueNumber < 0)) {
+      alert("Estimated value must be a number of 0 or more.");
+      return false;
+    }
+
     const derivedBarcode = buildBarcode(categoryCode, locationCode, serialNumber);
     const derivedReadableId = buildReadableId(categoryCode, locationCode, serialNumber);
 
@@ -1073,6 +1100,7 @@ export default function App() {
         Barcode: derivedBarcode,
         "Readable ID": derivedReadableId,
         Quantity: quantityValue,
+        "Estimated Value": estimatedValueRaw === "" ? "" : estimatedValueNumber.toFixed(2),
         Status: editingStatus,
         Condition: editingCondition,
         Notes: editingNotes,
@@ -1115,6 +1143,7 @@ export default function App() {
           categoryCode: item["Category Code"],
           locationCode: item["Location Code"],
           quantity: item.Quantity || 1,
+          estimatedValue: item["Estimated Value"] || "",
           status: item.Status || "Active",
           condition: item.Condition || "",
           notes: item.Notes || "",
@@ -1143,6 +1172,7 @@ export default function App() {
             "Checked Out At",
             "Last Checked In At",
             "Last Scan Action",
+          "Estimated Value",
           ];
 
           return fieldsToCheck.some(
@@ -1160,6 +1190,7 @@ export default function App() {
           barcode: item.Barcode,
           readableId: item["Readable ID"],
           quantity: item.Quantity || 1,
+          estimatedValue: item["Estimated Value"] || "",
           status: item.Status,
           condition: item.Condition,
           notes: item.Notes,
@@ -1362,6 +1393,10 @@ export default function App() {
               <div className="summary-card compact-summary-card">
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
+              </div>
+              <div className="summary-card compact-summary-card">
+                <span className="summary-label">Total Value</span>
+                <span className="summary-value">{formattedTotalEstimatedValue}</span>
               </div>
               <button
                 className="button button-primary"
@@ -1907,6 +1942,7 @@ export default function App() {
                   <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
                   <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
                   <div><strong>Last Scan Action:</strong> {selectedItem["Last Scan Action"] || "-"}</div>
+                  <div><strong>Estimated Value:</strong> {selectedItem["Estimated Value"] ? Number(selectedItem["Estimated Value"]).toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-"}</div>
                 </div>
               </div>
 
@@ -1985,6 +2021,18 @@ export default function App() {
                       step="1"
                       value={editingQuantity}
                       onChange={(e) => setEditingQuantity(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Estimated Value</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingEstimatedValue}
+                      onChange={(e) => setEditingEstimatedValue(e.target.value)}
                     />
                   </div>
 
