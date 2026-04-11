@@ -202,7 +202,6 @@ export default function App() {
   const [editingLocationCode, setEditingLocationCode] = useState("");
   const [editingSerialNumber, setEditingSerialNumber] = useState("");
   const [editingQuantity, setEditingQuantity] = useState(1);
-  const [editingEstimatedValue, setEditingEstimatedValue] = useState("");
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
@@ -404,7 +403,6 @@ export default function App() {
       "Checked Out At": item["Checked Out At"] || "",
       "Last Checked In At": item["Last Checked In At"] || "",
       "Last Scan Action": item["Last Scan Action"] || "",
-      "Estimated Value": item["Estimated Value"] || "",
       localId: item.localId || item.Barcode || item["Readable ID"] || `row-${index}`,
       isLocalOnly: Boolean(item.isLocalOnly),
     }));
@@ -533,7 +531,6 @@ export default function App() {
           "Checked Out At",
           "Last Checked In At",
           "Last Scan Action",
-          "Estimated Value",
         ];
 
         const changed = fieldsToCheck.some(
@@ -553,39 +550,28 @@ export default function App() {
     };
   }, [workingInventory, savedInventory]);
 
-  const totalEstimatedValue = useMemo(() => {
-    return workingInventory.reduce((sum, item) => {
-      const value = Number(item["Estimated Value"] || 0);
-      return sum + (Number.isFinite(value) ? value : 0);
-    }, 0);
-  }, [workingInventory]);
-
-  const formattedTotalEstimatedValue = useMemo(() => {
-    return totalEstimatedValue.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-  }, [totalEstimatedValue]);
-
   // Search filtering across the main inventory list.
   const filteredInventory = useMemo(() => {
-    const filteredTotalEstimatedValue = useMemo(() => {
-  return filteredInventory.reduce((sum, item) => {
-    const value = Number(item["Estimated Value"] || 0);
+    const term = searchTerm.trim().toLowerCase();
+
+    
+
+const filteredTotalEstimatedValue = useMemo(() => {
+  return (filteredInventory || []).reduce((sum, item) => {
+    const value = Number(item && item["Estimated Value"] ? item["Estimated Value"] : 0);
     return sum + (Number.isFinite(value) ? value : 0);
   }, 0);
 }, [filteredInventory]);
 
 const formattedFilteredTotalEstimatedValue = useMemo(() => {
-  return filteredTotalEstimatedValue.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
+  return (Number.isFinite(filteredTotalEstimatedValue) ? filteredTotalEstimatedValue : 0)
+    .toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
 }, [filteredTotalEstimatedValue]);
 
-    const term = searchTerm.trim().toLowerCase();
-
-    return workingInventory.filter((item) => {
+return workingInventory.filter((item) => {
       const matchesSearch =
         !term ||
         [
@@ -654,7 +640,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
       setEditingLocationCode(String(selectedItem["Location Code"] || "").padStart(2, "0"));
       setEditingSerialNumber(selectedItem["Serial Number"] || "");
       setEditingQuantity(selectedItem.Quantity || 1);
-      setEditingEstimatedValue(selectedItem["Estimated Value"] || "");
       setEditingNotes(selectedItem.Notes || "");
       setEditingCondition(selectedItem.Condition || "");
       setEditingStatus(selectedItem.Status || "Active");
@@ -666,7 +651,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
       setEditingLocationCode("");
       setEditingSerialNumber("");
       setEditingQuantity(1);
-      setEditingEstimatedValue("");
       setEditingNotes("");
       setEditingCondition("");
       setEditingStatus("Active");
@@ -1031,7 +1015,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
-          "Estimated Value": "",
           Status: "Active",
           Condition: "Good",
           Notes: "",
@@ -1069,8 +1052,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
     const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
     const serialNumber = String(editingSerialNumber || "").trim();
     const quantityValue = Number(editingQuantity);
-    const estimatedValueRaw = String(editingEstimatedValue ?? "").trim();
-    const estimatedValueNumber = estimatedValueRaw === "" ? "" : Number(estimatedValueRaw);
 
     if (!editingItemName.trim()) {
       alert("Please enter an item name.");
@@ -1092,11 +1073,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
       return false;
     }
 
-    if (estimatedValueRaw !== "" && (!Number.isFinite(estimatedValueNumber) || estimatedValueNumber < 0)) {
-      alert("Estimated value must be a number of 0 or more.");
-      return false;
-    }
-
     const derivedBarcode = buildBarcode(categoryCode, locationCode, serialNumber);
     const derivedReadableId = buildReadableId(categoryCode, locationCode, serialNumber);
 
@@ -1114,7 +1090,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
         Barcode: derivedBarcode,
         "Readable ID": derivedReadableId,
         Quantity: quantityValue,
-        "Estimated Value": estimatedValueRaw === "" ? "" : estimatedValueNumber.toFixed(2),
         Status: editingStatus,
         Condition: editingCondition,
         Notes: editingNotes,
@@ -1157,7 +1132,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
           categoryCode: item["Category Code"],
           locationCode: item["Location Code"],
           quantity: item.Quantity || 1,
-          estimatedValue: item["Estimated Value"] || "",
           status: item.Status || "Active",
           condition: item.Condition || "",
           notes: item.Notes || "",
@@ -1186,7 +1160,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
             "Checked Out At",
             "Last Checked In At",
             "Last Scan Action",
-            "Estimated Value",
           ];
 
           return fieldsToCheck.some(
@@ -1204,7 +1177,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
           barcode: item.Barcode,
           readableId: item["Readable ID"],
           quantity: item.Quantity || 1,
-          estimatedValue: item["Estimated Value"] || "",
           status: item.Status,
           condition: item.Condition,
           notes: item.Notes,
@@ -1408,11 +1380,12 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
-              <div className="summary-card compact-summary-card">
-                <span className="summary-label">Filtered Value</span>
-                <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
-              </div>
-              <button
+              
+<div className="summary-card compact-summary-card">
+  <span className="summary-label">Filtered Value</span>
+  <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
+</div>
+<button
                 className="button button-primary"
                 onClick={publishChanges}
                 disabled={publishing || pendingSummary.total === 0}
@@ -1956,7 +1929,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                   <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
                   <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
                   <div><strong>Last Scan Action:</strong> {selectedItem["Last Scan Action"] || "-"}</div>
-                  <div><strong>Estimated Value:</strong> {selectedItem["Estimated Value"] ? Number(selectedItem["Estimated Value"]).toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-"}</div>
                 </div>
               </div>
 
@@ -2035,18 +2007,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                       step="1"
                       value={editingQuantity}
                       onChange={(e) => setEditingQuantity(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Estimated Value</label>
-                    <input
-                      className="input"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingEstimatedValue}
-                      onChange={(e) => setEditingEstimatedValue(e.target.value)}
                     />
                   </div>
 
