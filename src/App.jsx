@@ -294,7 +294,14 @@ export default function App() {
       category: category || "",
       location: location || "",
       quantity: 1,
-      ...overrides,
+      
+    estimatedValue: \"\",
+    estimatedValue: "",
+    lineId: `line-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      name: "",
+      category: category || "",
+      location: location || "",
+      quantity: 1,...overrides,
     };
   }
 
@@ -554,6 +561,23 @@ export default function App() {
   const filteredInventory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
+    
+
+const filteredTotalEstimatedValue = useMemo(() => {
+  return (filteredInventory || []).reduce((sum, item) => {
+    const value = Number(item && item["Estimated Value"] ? item["Estimated Value"] : 0);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+}, [filteredInventory]);
+
+const formattedFilteredTotalEstimatedValue = useMemo(() => {
+  return (Number.isFinite(filteredTotalEstimatedValue) ? filteredTotalEstimatedValue : 0)
+    .toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
+}, [filteredTotalEstimatedValue]);
+
 return workingInventory.filter((item) => {
       const matchesSearch =
         !term ||
@@ -581,22 +605,6 @@ return workingInventory.filter((item) => {
       return matchesSearch && matchesCategory && matchesLocation;
     });
   }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
-
-
-const filteredTotalEstimatedValue = useMemo(() => {
-  return filteredInventory.reduce((sum, item) => {
-    const value = Number(item["Estimated Value"] || 0);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-}, [filteredInventory]);
-
-const formattedFilteredTotalEstimatedValue = useMemo(() => {
-  return filteredTotalEstimatedValue.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}, [filteredTotalEstimatedValue]);
-
 
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
@@ -1014,7 +1022,8 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
-          Status: "Active",
+          "Estimated Value": Number(lineItem.estimatedValue || 0),
+      Status: "Active",
           Condition: "Good",
           Notes: "",
           "Checked Out To": "",
@@ -1379,7 +1388,7 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
-
+              
 <div className="summary-card compact-summary-card">
   <span className="summary-label">Filtered Value</span>
   <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
@@ -1837,7 +1846,7 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <div className="asset-line-item" key={lineItem.lineId}>
                   <input
                     className="input"
-                    placeholder="Add item name"
+                    placeholder="Shure ULXD4 Receiver"
                     value={lineItem.name}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "name", e.target.value)}
                   />
@@ -1875,7 +1884,17 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                     value={lineItem.quantity}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "quantity", e.target.value)}
                   />
-                  <button
+                  
+<input
+  className="input"
+  type="number"
+  min="0"
+  step="0.01"
+  placeholder="0.00"
+  value={lineItem.estimatedValue}
+  onChange={(e) => updateAssetLineItem(lineItem.lineId, "estimatedValue", e.target.value)}
+/>
+<button
                     className="button button-secondary"
                     type="button"
                     onClick={() => removeAssetLineItem(lineItem.lineId)}
