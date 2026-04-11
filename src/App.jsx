@@ -554,23 +554,6 @@ export default function App() {
   const filteredInventory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    
-
-const filteredTotalEstimatedValue = useMemo(() => {
-  return (filteredInventory || []).reduce((sum, item) => {
-    const value = Number(item && item["Estimated Value"] ? item["Estimated Value"] : 0);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-}, [filteredInventory]);
-
-const formattedFilteredTotalEstimatedValue = useMemo(() => {
-  return (Number.isFinite(filteredTotalEstimatedValue) ? filteredTotalEstimatedValue : 0)
-    .toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-}, [filteredTotalEstimatedValue]);
-
 return workingInventory.filter((item) => {
       const matchesSearch =
         !term ||
@@ -598,6 +581,22 @@ return workingInventory.filter((item) => {
       return matchesSearch && matchesCategory && matchesLocation;
     });
   }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
+
+
+const filteredTotalEstimatedValue = useMemo(() => {
+  return filteredInventory.reduce((sum, item) => {
+    const value = Number(item["Estimated Value"] || 0);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+}, [filteredInventory]);
+
+const formattedFilteredTotalEstimatedValue = useMemo(() => {
+  return filteredTotalEstimatedValue.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}, [filteredTotalEstimatedValue]);
+
 
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
@@ -1380,7 +1379,7 @@ return workingInventory.filter((item) => {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
-              
+
 <div className="summary-card compact-summary-card">
   <span className="summary-label">Filtered Value</span>
   <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
