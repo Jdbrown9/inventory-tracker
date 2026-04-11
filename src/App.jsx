@@ -569,6 +569,20 @@ export default function App() {
 
   // Search filtering across the main inventory list.
   const filteredInventory = useMemo(() => {
+    const filteredTotalEstimatedValue = useMemo(() => {
+  return filteredInventory.reduce((sum, item) => {
+    const value = Number(item["Estimated Value"] || 0);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+}, [filteredInventory]);
+
+const formattedFilteredTotalEstimatedValue = useMemo(() => {
+  return filteredTotalEstimatedValue.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}, [filteredTotalEstimatedValue]);
+
     const term = searchTerm.trim().toLowerCase();
 
     return workingInventory.filter((item) => {
@@ -1395,8 +1409,8 @@ export default function App() {
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
               <div className="summary-card compact-summary-card">
-                <span className="summary-label">Total Value</span>
-                <span className="summary-value">{formattedTotalEstimatedValue}</span>
+                <span className="summary-label">Filtered Value</span>
+                <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
               </div>
               <button
                 className="button button-primary"
