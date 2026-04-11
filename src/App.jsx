@@ -230,6 +230,23 @@ export default function App() {
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
   const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
+
+const DEFAULT_LABEL_STYLES = {
+  barcodeHeight: 42,
+  barcodeWidth: 2,
+  itemNameFontSize: 9,
+  readableIdFontSize: 9,
+  locationFontSize: 8,
+  propertyFontSize: 7,
+  labelPadding: 0.05,
+};
+
+const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
+
+function updateLabelStyle(field, value) {
+  setLabelStyles((s) => ({ ...s, [field]: value }));
+}
+
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -294,7 +311,6 @@ export default function App() {
       category: category || "",
       location: location || "",
       quantity: 1,
-      estimatedValue: "",
       ...overrides,
     };
   }
@@ -582,21 +598,6 @@ export default function App() {
       return matchesSearch && matchesCategory && matchesLocation;
     });
   }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
-
-
-const filteredTotalEstimatedValue = useMemo(() => {
-  return filteredInventory.reduce((sum, item) => {
-    const value = Number(item["Estimated Value"] || 0);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-}, [filteredInventory]);
-
-const formattedFilteredTotalEstimatedValue = useMemo(() => {
-  return filteredTotalEstimatedValue.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-}, [filteredTotalEstimatedValue]);
 
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
@@ -1014,7 +1015,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
-          "Estimated Value": Number(lineItem.estimatedValue || 0),
           Status: "Active",
           Condition: "Good",
           Notes: "",
@@ -1380,11 +1380,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
-
-<div className="summary-card compact-summary-card">
-  <span className="summary-label">Filtered Value</span>
-  <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
-</div>
               <button
                 className="button button-primary"
                 onClick={publishChanges}
@@ -1693,7 +1688,15 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
             <section className="panel">
               <div className="panel-header">
                 <p className="panel-kicker">Label Content</p>
-                <h2>Print Options</h2>
+                <h2>Print Options
+
+<div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px", marginTop: "8px" }}>
+  <input type="number" placeholder="Barcode Height" value={labelStyles.barcodeHeight} onChange={(e)=>updateLabelStyle("barcodeHeight", e.target.value)} />
+  <input type="number" placeholder="Barcode Width" value={labelStyles.barcodeWidth} onChange={(e)=>updateLabelStyle("barcodeWidth", e.target.value)} />
+  <input type="number" placeholder="Name Size" value={labelStyles.itemNameFontSize} onChange={(e)=>updateLabelStyle("itemNameFontSize", e.target.value)} />
+  <input type="number" placeholder="ID Size" value={labelStyles.readableIdFontSize} onChange={(e)=>updateLabelStyle("readableIdFontSize", e.target.value)} />
+</div>
+</h2>
               </div>
 
               <div className="label-option-list">
@@ -1751,36 +1754,31 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                       <div
                         key={slot.slotIndex}
                         className={`preview-label ${slot.item ? "" : "empty"}`}
-                        style={{
-                          top: `${slot.top}in`,
-                          left: `${slot.left}in`,
-                          width: `${slot.width}in`,
-                          height: `${slot.height}in`,
-                        }}
+                        style={{ top: `${slot.top}in`, left: `${slot.left}in`, width: `${slot.width}in`, height: `${slot.height}in`, padding: `${Number(labelStyles.labelPadding)||0.05}in` }}
                       >
                         {slot.item ? (
                           <>
                             {labelOptions.showItemName && (
-                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
+                              <strong className="preview-label-name" style={{ fontSize: `${Number(labelStyles.itemNameFontSize)||9}px` }}>{slot.item["Item Name"]}</strong>
                             )}
                             {labelOptions.showBarcode && (
                               <Barcode
                                 className="preview-label-barcode"
                                 value={slot.item.Barcode}
                                 label={labelOptions.showReadableId ? slot.item["Readable ID"] || slot.item.Barcode : ""}
-                                width={2}
-                                height={42}
+                                width={Number(labelStyles.barcodeWidth) || 2}
+                                height={Number(labelStyles.barcodeHeight) || 42}
                                 displayValue={labelOptions.showReadableId}
                               />
                             )}
                             {!labelOptions.showBarcode && labelOptions.showReadableId && (
-                              <strong className="preview-label-id">{slot.item["Readable ID"] || slot.item.Barcode}</strong>
+                              <strong className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize)||9}px` }}>{slot.item["Readable ID"] || slot.item.Barcode}</strong>
                             )}
                             {labelOptions.showLocation && (
-                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
+                              <span className="preview-label-location" style={{ fontSize: `${Number(labelStyles.locationFontSize)||8}px` }}>{slot.item["Location Name"]}</span>
                             )}
                             {labelOptions.showPropertyText && (
-                              <span className="preview-label-property">
+                              <span className="preview-label-property" style={{ fontSize: `${Number(labelStyles.propertyFontSize)||7}px` }}>
                                 Property of Allen County War Memorial Coliseum
                               </span>
                             )}
@@ -1831,7 +1829,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <span>Category</span>
                 <span>Location</span>
                 <span>Qty</span>
-                <span>Value</span>
                 <span>Action</span>
               </div>
 
@@ -1839,7 +1836,7 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                 <div className="asset-line-item" key={lineItem.lineId}>
                   <input
                     className="input"
-                    placeholder="Add Item Name"
+                    placeholder="Shure ULXD4 Receiver"
                     value={lineItem.name}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "name", e.target.value)}
                   />
@@ -1876,15 +1873,6 @@ const formattedFilteredTotalEstimatedValue = useMemo(() => {
                     step="1"
                     value={lineItem.quantity}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "quantity", e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={lineItem.estimatedValue}
-                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "estimatedValue", e.target.value)}
                   />
                   <button
                     className="button button-secondary"
