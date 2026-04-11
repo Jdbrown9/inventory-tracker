@@ -229,7 +229,7 @@ export default function App() {
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
-  const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
+  const [labelOptions, setLabelOptions] = useState
 
 const DEFAULT_LABEL_STYLES = {
   barcodeHeight: 42,
@@ -247,6 +247,7 @@ function updateLabelStyle(field, value) {
   setLabelStyles((s) => ({ ...s, [field]: value }));
 }
 
+(DEFAULT_LABEL_OPTIONS);
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -1690,11 +1691,15 @@ function updateLabelStyle(field, value) {
                 <p className="panel-kicker">Label Content</p>
                 <h2>Print Options
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px", marginTop: "8px" }}>
-  <input type="number" placeholder="Barcode Height" value={labelStyles.barcodeHeight} onChange={(e)=>updateLabelStyle("barcodeHeight", e.target.value)} />
-  <input type="number" placeholder="Barcode Width" value={labelStyles.barcodeWidth} onChange={(e)=>updateLabelStyle("barcodeWidth", e.target.value)} />
-  <input type="number" placeholder="Name Size" value={labelStyles.itemNameFontSize} onChange={(e)=>updateLabelStyle("itemNameFontSize", e.target.value)} />
-  <input type="number" placeholder="ID Size" value={labelStyles.readableIdFontSize} onChange={(e)=>updateLabelStyle("readableIdFontSize", e.target.value)} />
+<div className="label-style-controls">
+  <div className="label-style-control">
+    <label>Barcode Height</label>
+    <input className="input" type="number" value={labelStyles.barcodeHeight} onChange={(e)=>updateLabelStyle("barcodeHeight", e.target.value)} />
+  </div>
+  <div className="label-style-control">
+    <label>Barcode Width</label>
+    <input className="input" type="number" value={labelStyles.barcodeWidth} onChange={(e)=>updateLabelStyle("barcodeWidth", e.target.value)} />
+  </div>
 </div>
 </h2>
               </div>
@@ -1754,12 +1759,17 @@ function updateLabelStyle(field, value) {
                       <div
                         key={slot.slotIndex}
                         className={`preview-label ${slot.item ? "" : "empty"}`}
-                        style={{ top: `${slot.top}in`, left: `${slot.left}in`, width: `${slot.width}in`, height: `${slot.height}in`, padding: `${Number(labelStyles.labelPadding)||0.05}in` }}
+                        style={{
+                          top: `${slot.top}in`,
+                          left: `${slot.left}in`,
+                          width: `${slot.width}in`,
+                          height: `${slot.height}in`,
+                        }}
                       >
                         {slot.item ? (
                           <>
                             {labelOptions.showItemName && (
-                              <strong className="preview-label-name" style={{ fontSize: `${Number(labelStyles.itemNameFontSize)||9}px` }}>{slot.item["Item Name"]}</strong>
+                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
                             )}
                             {labelOptions.showBarcode && (
                               <Barcode
@@ -1772,13 +1782,13 @@ function updateLabelStyle(field, value) {
                               />
                             )}
                             {!labelOptions.showBarcode && labelOptions.showReadableId && (
-                              <strong className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize)||9}px` }}>{slot.item["Readable ID"] || slot.item.Barcode}</strong>
+                              <strong className="preview-label-id">{slot.item["Readable ID"] || slot.item.Barcode}</strong>
                             )}
                             {labelOptions.showLocation && (
-                              <span className="preview-label-location" style={{ fontSize: `${Number(labelStyles.locationFontSize)||8}px` }}>{slot.item["Location Name"]}</span>
+                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
                             )}
                             {labelOptions.showPropertyText && (
-                              <span className="preview-label-property" style={{ fontSize: `${Number(labelStyles.propertyFontSize)||7}px` }}>
+                              <span className="preview-label-property">
                                 Property of Allen County War Memorial Coliseum
                               </span>
                             )}
