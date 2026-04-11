@@ -1172,7 +1172,7 @@ export default function App() {
             "Checked Out At",
             "Last Checked In At",
             "Last Scan Action",
-          "Estimated Value",
+            "Estimated Value",
           ];
 
           return fieldsToCheck.some(
