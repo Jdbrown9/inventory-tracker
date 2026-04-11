@@ -583,6 +583,21 @@ export default function App() {
     });
   }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
 
+
+const filteredTotalEstimatedValue = useMemo(() => {
+  return filteredInventory.reduce((sum, item) => {
+    const value = Number(item["Estimated Value"] || 0);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+}, [filteredInventory]);
+
+const formattedFilteredTotalEstimatedValue = useMemo(() => {
+  return filteredTotalEstimatedValue.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}, [filteredTotalEstimatedValue]);
+
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
     return workingInventory.find((item) => item.localId === selectedItemId) || null;
@@ -1365,6 +1380,11 @@ export default function App() {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
+
+<div className="summary-card compact-summary-card">
+  <span className="summary-label">Filtered Value</span>
+  <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
+</div>
               <button
                 className="button button-primary"
                 onClick={publishChanges}
@@ -1819,7 +1839,7 @@ export default function App() {
                 <div className="asset-line-item" key={lineItem.lineId}>
                   <input
                     className="input"
-                    placeholder="Shure ULXD4 Receiver"
+                    placeholder="Add Item Name"
                     value={lineItem.name}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "name", e.target.value)}
                   />
