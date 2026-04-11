@@ -229,7 +229,7 @@ export default function App() {
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
-  const [labelOptions, setLabelOptions] = useState
+  const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
 
 const DEFAULT_LABEL_STYLES = {
   barcodeHeight: 42,
@@ -240,14 +240,8 @@ const DEFAULT_LABEL_STYLES = {
   propertyFontSize: 7,
   labelPadding: 0.05,
 };
-
 const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
 
-function updateLabelStyle(field, value) {
-  setLabelStyles((s) => ({ ...s, [field]: value }));
-}
-
-(DEFAULT_LABEL_OPTIONS);
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -884,6 +878,14 @@ function updateLabelStyle(field, value) {
       [field]: !currentOptions[field],
     }));
   }
+
+
+function updateLabelStyle(field, value) {
+  setLabelStyles((currentStyles) => ({
+    ...currentStyles,
+    [field]: value,
+  }));
+}
 
   function toggleLabelItem(itemId) {
     setSelectedLabelItemIds((currentIds) =>
@@ -1689,20 +1691,77 @@ function updateLabelStyle(field, value) {
             <section className="panel">
               <div className="panel-header">
                 <p className="panel-kicker">Label Content</p>
-                <h2>Print Options
+                <h2>Print Options</h2>
+              </div>
 
 <div className="label-style-controls">
   <div className="label-style-control">
     <label>Barcode Height</label>
-    <input className="input" type="number" value={labelStyles.barcodeHeight} onChange={(e)=>updateLabelStyle("barcodeHeight", e.target.value)} />
+    <input
+      className="input"
+      type="number"
+      min="10"
+      step="1"
+      value={labelStyles.barcodeHeight}
+      onChange={(e) => updateLabelStyle("barcodeHeight", e.target.value)}
+    />
   </div>
   <div className="label-style-control">
     <label>Barcode Width</label>
-    <input className="input" type="number" value={labelStyles.barcodeWidth} onChange={(e)=>updateLabelStyle("barcodeWidth", e.target.value)} />
+    <input
+      className="input"
+      type="number"
+      min="1"
+      step="0.1"
+      value={labelStyles.barcodeWidth}
+      onChange={(e) => updateLabelStyle("barcodeWidth", e.target.value)}
+    />
+  </div>
+  <div className="label-style-control">
+    <label>Name Size</label>
+    <input
+      className="input"
+      type="number"
+      min="6"
+      step="1"
+      value={labelStyles.itemNameFontSize}
+      onChange={(e) => updateLabelStyle("itemNameFontSize", e.target.value)}
+    />
+  </div>
+  <div className="label-style-control">
+    <label>ID Size</label>
+    <input
+      className="input"
+      type="number"
+      min="6"
+      step="1"
+      value={labelStyles.readableIdFontSize}
+      onChange={(e) => updateLabelStyle("readableIdFontSize", e.target.value)}
+    />
+  </div>
+  <div className="label-style-control">
+    <label>Location Size</label>
+    <input
+      className="input"
+      type="number"
+      min="6"
+      step="1"
+      value={labelStyles.locationFontSize}
+      onChange={(e) => updateLabelStyle("locationFontSize", e.target.value)}
+    />
+  </div>
+  <div className="label-style-control">
+    <label>Property Size</label>
+    <input
+      className="input"
+      type="number"
+      min="6"
+      step="1"
+      value={labelStyles.propertyFontSize}
+      onChange={(e) => updateLabelStyle("propertyFontSize", e.target.value)}
+    />
   </div>
 </div>
-</h2>
-              </div>
 
               <div className="label-option-list">
                 {[
@@ -1764,12 +1823,13 @@ function updateLabelStyle(field, value) {
                           left: `${slot.left}in`,
                           width: `${slot.width}in`,
                           height: `${slot.height}in`,
+                          padding: `${Number(labelStyles.labelPadding) || 0.05}in`,
                         }}
                       >
                         {slot.item ? (
                           <>
                             {labelOptions.showItemName && (
-                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
+                              <strong className="preview-label-name" style={{ fontSize: `${Number(labelStyles.itemNameFontSize) || 9}px` }}>{slot.item["Item Name"]}</strong>
                             )}
                             {labelOptions.showBarcode && (
                               <Barcode
@@ -1782,13 +1842,13 @@ function updateLabelStyle(field, value) {
                               />
                             )}
                             {!labelOptions.showBarcode && labelOptions.showReadableId && (
-                              <strong className="preview-label-id">{slot.item["Readable ID"] || slot.item.Barcode}</strong>
+                              <strong className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}>{slot.item["Readable ID"] || slot.item.Barcode}</strong>
                             )}
                             {labelOptions.showLocation && (
-                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
+                              <span className="preview-label-location" style={{ fontSize: `${Number(labelStyles.locationFontSize) || 8}px` }}>{slot.item["Location Name"]}</span>
                             )}
                             {labelOptions.showPropertyText && (
-                              <span className="preview-label-property">
+                              <span className="preview-label-property" style={{ fontSize: `${Number(labelStyles.propertyFontSize) || 7}px` }}>
                                 Property of Allen County War Memorial Coliseum
                               </span>
                             )}
