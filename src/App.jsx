@@ -294,14 +294,8 @@ export default function App() {
       category: category || "",
       location: location || "",
       quantity: 1,
-      
-    estimatedValue: \"\",
-    estimatedValue: "",
-    lineId: `line-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-      name: "",
-      category: category || "",
-      location: location || "",
-      quantity: 1,...overrides,
+      estimatedValue: "",
+      ...overrides,
     };
   }
 
@@ -561,24 +555,7 @@ export default function App() {
   const filteredInventory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    
-
-const filteredTotalEstimatedValue = useMemo(() => {
-  return (filteredInventory || []).reduce((sum, item) => {
-    const value = Number(item && item["Estimated Value"] ? item["Estimated Value"] : 0);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-}, [filteredInventory]);
-
-const formattedFilteredTotalEstimatedValue = useMemo(() => {
-  return (Number.isFinite(filteredTotalEstimatedValue) ? filteredTotalEstimatedValue : 0)
-    .toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-}, [filteredTotalEstimatedValue]);
-
-return workingInventory.filter((item) => {
+    return workingInventory.filter((item) => {
       const matchesSearch =
         !term ||
         [
@@ -1023,7 +1000,7 @@ return workingInventory.filter((item) => {
           "Readable ID": readableId,
           Quantity: 1,
           "Estimated Value": Number(lineItem.estimatedValue || 0),
-      Status: "Active",
+          Status: "Active",
           Condition: "Good",
           Notes: "",
           "Checked Out To": "",
@@ -1388,12 +1365,7 @@ return workingInventory.filter((item) => {
                 <span className="summary-label">Edited Assets</span>
                 <span className="summary-value">{pendingSummary.edited}</span>
               </div>
-              
-<div className="summary-card compact-summary-card">
-  <span className="summary-label">Filtered Value</span>
-  <span className="summary-value">{formattedFilteredTotalEstimatedValue}</span>
-</div>
-<button
+              <button
                 className="button button-primary"
                 onClick={publishChanges}
                 disabled={publishing || pendingSummary.total === 0}
@@ -1839,6 +1811,7 @@ return workingInventory.filter((item) => {
                 <span>Category</span>
                 <span>Location</span>
                 <span>Qty</span>
+                <span>Value</span>
                 <span>Action</span>
               </div>
 
@@ -1884,17 +1857,16 @@ return workingInventory.filter((item) => {
                     value={lineItem.quantity}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "quantity", e.target.value)}
                   />
-                  
-<input
-  className="input"
-  type="number"
-  min="0"
-  step="0.01"
-  placeholder="0.00"
-  value={lineItem.estimatedValue}
-  onChange={(e) => updateAssetLineItem(lineItem.lineId, "estimatedValue", e.target.value)}
-/>
-<button
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={lineItem.estimatedValue}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "estimatedValue", e.target.value)}
+                  />
+                  <button
                     className="button button-secondary"
                     type="button"
                     onClick={() => removeAssetLineItem(lineItem.lineId)}
