@@ -184,6 +184,7 @@ export default function App() {
   const [workingInventory, setWorkingInventory] = useState([]);
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [eventLog, setEventLog] = useState([]);
 
   // Asset intake form values.
   const [name, setName] = useState("");
@@ -409,6 +410,21 @@ export default function App() {
     }));
   }
 
+  function normalizeEventLogRows(rows) {
+    return rows.map((entry, index) => ({
+      timestamp: entry.Timestamp || entry.timestamp || "",
+      eventType: entry["Event Type"] || entry.eventType || "",
+      itemName: entry["Item Name"] || entry.itemName || "",
+      readableId: entry["Readable ID"] || entry.readableId || "",
+      barcode: entry.Barcode || entry.barcode || "",
+      status: entry.Status || entry.status || "",
+      checkedOutTo: entry["Checked Out To"] || entry.checkedOutTo || "",
+      actor: entry.Actor || entry.actor || "",
+      details: entry.Details || entry.details || "",
+      rowNumber: entry.rowNumber || index + 2,
+    }));
+  }
+
   // Keeps a short newest-first activity feed for recent scans.
   function appendScanLog(message, type) {
     const entry = {
@@ -439,10 +455,12 @@ export default function App() {
       const inventoryRows = normalizeInventoryRows(data.inventory || []);
       const categoryRows = data.categories || [];
       const locationRows = data.locations || [];
+      const eventLogRows = normalizeEventLogRows(data.eventLog || []);
 
       setSavedInventory(inventoryRows);
       setCategories(categoryRows);
       setLocations(locationRows);
+      setEventLog(eventLogRows);
 
       if (categoryRows.length > 0 && !category) {
         setCategory(String(categoryRows[0]["Category Code"]).padStart(2, "0"));
@@ -1252,6 +1270,14 @@ export default function App() {
             >
               {publishing ? "Publishing..." : "Publish Updates"}
             </button>
+            <a
+              className="button button-secondary"
+              href="https://docs.google.com/spreadsheets/d/1ohg9VZF8Qs5kkLynRIDXuEFbYkwDugCljtrGuh7xwPY/edit?usp=sharing"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Master Inventory List
+            </a>
           </div>
         </div>
 
@@ -1276,6 +1302,13 @@ export default function App() {
             type="button"
           >
             Label Printing
+          </button>
+          <button
+            className={`brand-nav-item ${activeTab === "events" ? "active" : ""}`}
+            onClick={() => setActiveTab("events")}
+            type="button"
+          >
+            Event Log
           </button>
         </div>
       </header>
@@ -1560,6 +1593,57 @@ export default function App() {
                     <strong>{entry.message}</strong>
                     <span>{new Date(entry.timestamp).toLocaleString()}</span>
                   </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      ) : activeTab === "events" ? (
+        <div className="event-log-layout">
+          <section className="panel event-log-panel">
+            <div className="panel-header">
+              <p className="panel-kicker">Inventory History</p>
+              <h2>Event Log</h2>
+              <p>Published activity from the master inventory sheet.</p>
+            </div>
+
+            <div className="event-log-list">
+              {loadingApp ? (
+                <div className="empty-state">Loading event log...</div>
+              ) : eventLog.length === 0 ? (
+                <div className="empty-state">No published inventory events yet.</div>
+              ) : (
+                eventLog.map((entry) => (
+                  <article className="event-log-item" key={`${entry.rowNumber}-${entry.timestamp}`}>
+                    <div className="event-log-main">
+                      <span className="badge badge-status">{entry.eventType || "Inventory Event"}</span>
+                      <h3>{entry.itemName || "Inventory item"}</h3>
+                      <p>{entry.details || "Inventory activity was recorded."}</p>
+                    </div>
+
+                    <div className="event-log-meta">
+                      <span>
+                        <strong>Time</strong>
+                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "-"}
+                      </span>
+                      <span>
+                        <strong>Readable ID</strong>
+                        {entry.readableId || "-"}
+                      </span>
+                      <span>
+                        <strong>Status</strong>
+                        {entry.status || "-"}
+                      </span>
+                      <span>
+                        <strong>Checked Out To</strong>
+                        {entry.checkedOutTo || "-"}
+                      </span>
+                      <span>
+                        <strong>Actor</strong>
+                        {entry.actor || "-"}
+                      </span>
+                    </div>
+                  </article>
                 ))
               )}
             </div>
