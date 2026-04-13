@@ -32,6 +32,25 @@ const DEFAULT_LABEL_OPTIONS = {
 };
 
 const DEFAULT_PROPERTY_NOTICE = "Property of Allen County War Memorial Coliseum";
+const INVENTORY_DRAFT_COMPARE_FIELDS = [
+  "Item Name",
+  "Category Code",
+  "Category Name",
+  "Location Code",
+  "Location Name",
+  "Serial Number",
+  "Barcode",
+  "Readable ID",
+  "Quantity",
+  "Status",
+  "Condition",
+  "Notes",
+  "Checked Out To",
+  "Checked Out At",
+  "Last Checked In At",
+  "Last Scan Action",
+  "Scan Actor",
+];
 
 const DEFAULT_LABEL_STYLES = {
   barcodeHeight: 42,
@@ -64,6 +83,33 @@ function average(values) {
   const safeValues = values.filter((value) => Number.isFinite(value));
   if (safeValues.length === 0) return 0;
   return safeValues.reduce((sum, value) => sum + value, 0) / safeValues.length;
+}
+
+function getInventoryDraftKey(item) {
+  return item.localId || item.Barcode || item["Readable ID"] || "";
+}
+
+function hasInventoryDraftChanges(draftRows, serverRows) {
+  if (!Array.isArray(draftRows) || !Array.isArray(serverRows)) return false;
+  if (draftRows.some((item) => item.isLocalOnly)) return true;
+
+  const draftMap = new Map(draftRows.map((item) => [getInventoryDraftKey(item), item]));
+  const serverMap = new Map(serverRows.map((item) => [getInventoryDraftKey(item), item]));
+
+  if (draftMap.size !== serverMap.size) return false;
+
+  for (const [key, serverItem] of serverMap.entries()) {
+    const draftItem = draftMap.get(key);
+    if (!draftItem) return false;
+
+    const changed = INVENTORY_DRAFT_COMPARE_FIELDS.some(
+      (field) => String(draftItem[field] ?? "") !== String(serverItem[field] ?? "")
+    );
+
+    if (changed) return true;
+  }
+
+  return false;
 }
 
 function detectLabelColumns(columnWidths) {
@@ -200,10 +246,8 @@ export default function App() {
   const [eventTypeFilter, setEventTypeFilter] = useState("");
 
   // Asset intake form values.
-  const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
-  const [quantity, setQuantity] = useState(1);
   const [addAssetModalOpen, setAddAssetModalOpen] = useState(false);
   const [assetLineItems, setAssetLineItems] = useState([
     { lineId: "line-1", name: "", category: "", location: "", quantity: 1 },
@@ -498,11 +542,17 @@ export default function App() {
         try {
           const localDraft = JSON.parse(localDraftRaw);
           if (localDraft.workingInventory && Array.isArray(localDraft.workingInventory)) {
-            setWorkingInventory(normalizeInventoryRows(localDraft.workingInventory));
+            const draftInventoryRows = normalizeInventoryRows(localDraft.workingInventory);
+            setWorkingInventory(
+              hasInventoryDraftChanges(draftInventoryRows, inventoryRows)
+                ? draftInventoryRows
+                : inventoryRows
+            );
           } else {
             setWorkingInventory(inventoryRows);
           }
         } catch {
+          clearDraftFromLocalStorage();
           setWorkingInventory(inventoryRows);
         }
       } else {
@@ -525,8 +575,12 @@ export default function App() {
   // Writes local inventory edits to browser storage.
   useEffect(() => {
     if (!hasLoadedLocalDraft) return;
-    saveDraftToLocalStorage(workingInventory);
-  }, [workingInventory, hasLoadedLocalDraft]);
+    if (hasInventoryDraftChanges(workingInventory, savedInventory)) {
+      saveDraftToLocalStorage(workingInventory);
+    } else {
+      clearDraftFromLocalStorage();
+    }
+  }, [workingInventory, savedInventory, hasLoadedLocalDraft]);
 
   // Keeps the USB scanner field ready on first load.
   useEffect(() => {
@@ -1140,8 +1194,6 @@ export default function App() {
       setSelectedItemId(newItems[newItems.length - 1].localId);
     }
 
-    setName("");
-    setQuantity(1);
     setAssetLineItems([buildAssetLineItem({ category, location })]);
     setAddAssetModalOpen(false);
   }
