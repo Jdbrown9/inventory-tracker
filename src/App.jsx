@@ -217,6 +217,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [activeTab, setActiveTab] = useState("inventory");
 
   // Shared scan state used by both USB and phone-camera flows.
@@ -230,18 +231,6 @@ export default function App() {
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
   const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
-
-const DEFAULT_LABEL_STYLES = {
-  barcodeHeight: 42,
-  barcodeWidth: 2,
-  itemNameFontSize: 9,
-  readableIdFontSize: 9,
-  locationFontSize: 8,
-  propertyFontSize: 7,
-  labelPadding: 0.05,
-};
-const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
-
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -589,10 +578,13 @@ const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
       const matchesLocation =
         !locationFilter ||
         String(item["Location Code"] || "").padStart(2, "0") === String(locationFilter).padStart(2, "0");
+      const matchesStatus =
+        !statusFilter ||
+        String(item.Status || "").trim().toLowerCase() === String(statusFilter).trim().toLowerCase();
 
-      return matchesSearch && matchesCategory && matchesLocation;
+      return matchesSearch && matchesCategory && matchesLocation && matchesStatus;
     });
-  }, [workingInventory, searchTerm, categoryFilter, locationFilter]);
+  }, [workingInventory, searchTerm, categoryFilter, locationFilter, statusFilter]);
 
   // The full row for the currently selected inventory item.
   const selectedItem = useMemo(() => {
@@ -878,14 +870,6 @@ const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
       [field]: !currentOptions[field],
     }));
   }
-
-
-function updateLabelStyle(field, value) {
-  setLabelStyles((currentStyles) => ({
-    ...currentStyles,
-    [field]: value,
-  }));
-}
 
   function toggleLabelItem(itemId) {
     setSelectedLabelItemIds((currentIds) =>
@@ -1343,7 +1327,19 @@ function updateLabelStyle(field, value) {
                     </option>
                   ))}
                 </select>
-                {(categoryFilter || locationFilter || searchTerm) && (
+                <select
+                  className="input filter-input"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  disabled={loadingApp}
+                >
+                  <option value="">All statuses</option>
+                  <option value="Active">Active</option>
+                  <option value="Checked Out">Checked Out</option>
+                  <option value="Missing">Missing</option>
+                  <option value="Retired">Retired</option>
+                </select>
+                {(categoryFilter || locationFilter || statusFilter || searchTerm) && (
                   <button
                     className="button button-secondary scan-button"
                     type="button"
@@ -1351,6 +1347,7 @@ function updateLabelStyle(field, value) {
                       setSearchTerm("");
                       setCategoryFilter("");
                       setLocationFilter("");
+                      setStatusFilter("");
                     }}
                   >
                     Clear
@@ -1694,75 +1691,6 @@ function updateLabelStyle(field, value) {
                 <h2>Print Options</h2>
               </div>
 
-<div className="label-style-controls">
-  <div className="label-style-control">
-    <label>Barcode Height</label>
-    <input
-      className="input"
-      type="number"
-      min="10"
-      step="1"
-      value={labelStyles.barcodeHeight}
-      onChange={(e) => updateLabelStyle("barcodeHeight", e.target.value)}
-    />
-  </div>
-  <div className="label-style-control">
-    <label>Barcode Width</label>
-    <input
-      className="input"
-      type="number"
-      min="1"
-      step="0.1"
-      value={labelStyles.barcodeWidth}
-      onChange={(e) => updateLabelStyle("barcodeWidth", e.target.value)}
-    />
-  </div>
-  <div className="label-style-control">
-    <label>Name Size</label>
-    <input
-      className="input"
-      type="number"
-      min="6"
-      step="1"
-      value={labelStyles.itemNameFontSize}
-      onChange={(e) => updateLabelStyle("itemNameFontSize", e.target.value)}
-    />
-  </div>
-  <div className="label-style-control">
-    <label>ID Size</label>
-    <input
-      className="input"
-      type="number"
-      min="6"
-      step="1"
-      value={labelStyles.readableIdFontSize}
-      onChange={(e) => updateLabelStyle("readableIdFontSize", e.target.value)}
-    />
-  </div>
-  <div className="label-style-control">
-    <label>Location Size</label>
-    <input
-      className="input"
-      type="number"
-      min="6"
-      step="1"
-      value={labelStyles.locationFontSize}
-      onChange={(e) => updateLabelStyle("locationFontSize", e.target.value)}
-    />
-  </div>
-  <div className="label-style-control">
-    <label>Property Size</label>
-    <input
-      className="input"
-      type="number"
-      min="6"
-      step="1"
-      value={labelStyles.propertyFontSize}
-      onChange={(e) => updateLabelStyle("propertyFontSize", e.target.value)}
-    />
-  </div>
-</div>
-
               <div className="label-option-list">
                 {[
                   ["showBarcode", "Show barcode graphic"],
@@ -1823,32 +1751,36 @@ function updateLabelStyle(field, value) {
                           left: `${slot.left}in`,
                           width: `${slot.width}in`,
                           height: `${slot.height}in`,
-                          padding: `${Number(labelStyles.labelPadding) || 0.05}in`,
                         }}
                       >
                         {slot.item ? (
                           <>
                             {labelOptions.showItemName && (
-                              <strong className="preview-label-name" style={{ fontSize: `${Number(labelStyles.itemNameFontSize) || 9}px` }}>{slot.item["Item Name"]}</strong>
+                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
                             )}
                             {labelOptions.showBarcode && (
                               <Barcode
                                 className="preview-label-barcode"
                                 value={slot.item.Barcode}
                                 label={labelOptions.showReadableId ? slot.item["Readable ID"] || slot.item.Barcode : ""}
-                                width={Number(labelStyles.barcodeWidth) || 2}
-                                height={Number(labelStyles.barcodeHeight) || 42}
-                                displayValue={labelOptions.showReadableId}
+                                width={2}
+                                height={42}
+                                displayValue={false}
                               />
                             )}
-                            {!labelOptions.showBarcode && labelOptions.showReadableId && (
-                              <strong className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}>{slot.item["Readable ID"] || slot.item.Barcode}</strong>
-                            )}
+                            {labelOptions.showReadableId && (
+      <strong
+        className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}
+        style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}
+      >
+        {slot.item["Readable ID"] || slot.item.Barcode}
+      </strong>
+    )}
                             {labelOptions.showLocation && (
-                              <span className="preview-label-location" style={{ fontSize: `${Number(labelStyles.locationFontSize) || 8}px` }}>{slot.item["Location Name"]}</span>
+                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
                             )}
                             {labelOptions.showPropertyText && (
-                              <span className="preview-label-property" style={{ fontSize: `${Number(labelStyles.propertyFontSize) || 7}px` }}>
+                              <span className="preview-label-property">
                                 Property of Allen County War Memorial Coliseum
                               </span>
                             )}
