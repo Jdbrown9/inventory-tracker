@@ -842,9 +842,20 @@ export default function App() {
       return;
     }
 
+    const currentStatus = String(matchedItem.Status || "").trim();
+
+    if (currentStatus !== "Checked Out" && currentStatus !== "Active") {
+      const message = `Scan blocked for ${matchedItem["Item Name"]}. Only active items can be checked out. Current status: ${currentStatus || "blank"}.`;
+      setSelectedItemId(matchedItem.localId);
+      setSearchTerm(normalizedBarcode);
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
     const now = new Date().toISOString();
     const nextItemState =
-      String(matchedItem.Status || "").trim() === "Checked Out"
+      currentStatus === "Checked Out"
         ? {
             Status: "Active",
             "Checked Out To": "",
