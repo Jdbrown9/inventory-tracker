@@ -31,6 +31,16 @@ const DEFAULT_LABEL_OPTIONS = {
   showPropertyText: false,
 };
 
+const DEFAULT_LABEL_STYLES = {
+  barcodeHeight: 42,
+  barcodeWidth: 2,
+  itemNameFontSize: 9,
+  readableIdFontSize: 9,
+  locationFontSize: 8,
+  propertyFontSize: 7,
+  labelPadding: 0.05,
+};
+
 const TWIPS_PER_INCH = 1440;
 const LABEL_TEMPLATE_ACCEPT =
   ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -237,6 +247,7 @@ export default function App() {
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
   const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
+  const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -804,7 +815,6 @@ export default function App() {
 
     if (!matchedItem) {
       const message = `Scanned ${normalizedBarcode}. No inventory match found.`;
-      setSearchTerm(normalizedBarcode);
       setScannerStatus(message);
       appendScanLog(message, "warning");
       return;
@@ -813,7 +823,6 @@ export default function App() {
     if (!scanSessionName.trim()) {
       const message = `Scan blocked for ${matchedItem["Item Name"]}. Select your name first.`;
       setSelectedItemId(matchedItem.localId);
-      setSearchTerm(normalizedBarcode);
       setScannerStatus(message);
       appendScanLog(message, "warning");
       return;
@@ -836,7 +845,6 @@ export default function App() {
 
       setWorkingInventory(updatedInventory);
       setSelectedItemId(matchedItem.localId);
-      setSearchTerm(normalizedBarcode);
       setScannerStatus(message);
       appendScanLog(message, "success");
       return;
@@ -847,7 +855,6 @@ export default function App() {
     if (currentStatus !== "Checked Out" && currentStatus !== "Active") {
       const message = `Scan blocked for ${matchedItem["Item Name"]}. Only active items can be checked out. Current status: ${currentStatus || "blank"}.`;
       setSelectedItemId(matchedItem.localId);
-      setSearchTerm(normalizedBarcode);
       setScannerStatus(message);
       appendScanLog(message, "warning");
       return;
@@ -886,7 +893,6 @@ export default function App() {
 
     setWorkingInventory(updatedInventory);
     setSelectedItemId(matchedItem.localId);
-    setSearchTerm(normalizedBarcode);
     setScannerStatus(message);
     appendScanLog(message, "success");
   }
@@ -961,6 +967,13 @@ export default function App() {
     setLabelOptions((currentOptions) => ({
       ...currentOptions,
       [field]: !currentOptions[field],
+    }));
+  }
+
+  function updateLabelStyle(field, value) {
+    setLabelStyles((currentStyles) => ({
+      ...currentStyles,
+      [field]: value,
     }));
   }
 
@@ -1908,6 +1921,30 @@ export default function App() {
                 ))}
               </div>
 
+              <div className="label-style-controls">
+                {[
+                  ["barcodeHeight", "Barcode Height", 10, 1],
+                  ["barcodeWidth", "Barcode Width", 1, 0.1],
+                  ["itemNameFontSize", "Name Size", 6, 1],
+                  ["readableIdFontSize", "ID Size", 6, 1],
+                  ["locationFontSize", "Location Size", 6, 1],
+                  ["propertyFontSize", "Property Size", 6, 1],
+                  ["labelPadding", "Label Padding", 0, 0.01],
+                ].map(([field, label, min, step]) => (
+                  <div className="label-style-control" key={field}>
+                    <label>{label}</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min={min}
+                      step={step}
+                      value={labelStyles[field]}
+                      onChange={(e) => updateLabelStyle(field, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+
               <button
                 className="button button-dark button-full"
                 type="button"
@@ -1949,33 +1986,50 @@ export default function App() {
                           left: `${slot.left}in`,
                           width: `${slot.width}in`,
                           height: `${slot.height}in`,
+                          padding: `${Number(labelStyles.labelPadding) || 0.05}in`,
                         }}
                       >
                         {slot.item ? (
                           <>
                             {labelOptions.showItemName && (
-                              <strong className="preview-label-name">{slot.item["Item Name"]}</strong>
+                              <strong
+                                className="preview-label-name"
+                                style={{ fontSize: `${Number(labelStyles.itemNameFontSize) || 9}px` }}
+                              >
+                                {slot.item["Item Name"]}
+                              </strong>
                             )}
                             {labelOptions.showBarcode && (
                               <Barcode
                                 className="preview-label-barcode"
                                 value={slot.item.Barcode}
                                 label={labelOptions.showReadableId ? slot.item["Readable ID"] || slot.item.Barcode : ""}
-                                width={2}
-                                height={42}
+                                width={Number(labelStyles.barcodeWidth) || 2}
+                                height={Number(labelStyles.barcodeHeight) || 42}
                                 displayValue={false}
                               />
                             )}
                             {labelOptions.showReadableId && (
-                              <strong className="preview-label-id">
+                              <strong
+                                className="preview-label-id"
+                                style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}
+                              >
                                 {slot.item["Readable ID"] || slot.item.Barcode}
                               </strong>
                             )}
                             {labelOptions.showLocation && (
-                              <span className="preview-label-location">{slot.item["Location Name"]}</span>
+                              <span
+                                className="preview-label-location"
+                                style={{ fontSize: `${Number(labelStyles.locationFontSize) || 8}px` }}
+                              >
+                                {slot.item["Location Name"]}
+                              </span>
                             )}
                             {labelOptions.showPropertyText && (
-                              <span className="preview-label-property">
+                              <span
+                                className="preview-label-property"
+                                style={{ fontSize: `${Number(labelStyles.propertyFontSize) || 7}px` }}
+                              >
                                 Property of Allen County War Memorial Coliseum
                               </span>
                             )}
