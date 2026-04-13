@@ -42,6 +42,7 @@ const INVENTORY_DRAFT_COMPARE_FIELDS = [
   "Barcode",
   "Readable ID",
   "Quantity",
+  "Estimated Value",
   "Status",
   "Condition",
   "Notes",
@@ -110,6 +111,16 @@ function hasInventoryDraftChanges(draftRows, serverRows) {
   }
 
   return false;
+}
+
+function formatEstimatedValue(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "-";
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(numericValue);
 }
 
 function detectLabelColumns(columnWidths) {
@@ -250,7 +261,7 @@ export default function App() {
   const [location, setLocation] = useState("");
   const [addAssetModalOpen, setAddAssetModalOpen] = useState(false);
   const [assetLineItems, setAssetLineItems] = useState([
-    { lineId: "line-1", name: "", category: "", location: "", quantity: 1 },
+    { lineId: "line-1", name: "", category: "", location: "", quantity: 1, estimatedValue: 0 },
   ]);
 
   // Selected item editor values.
@@ -260,6 +271,7 @@ export default function App() {
   const [editingLocationCode, setEditingLocationCode] = useState("");
   const [editingSerialNumber, setEditingSerialNumber] = useState("");
   const [editingQuantity, setEditingQuantity] = useState(1);
+  const [editingEstimatedValue, setEditingEstimatedValue] = useState(0);
   const [editingNotes, setEditingNotes] = useState("");
   const [editingCondition, setEditingCondition] = useState("");
   const [editingStatus, setEditingStatus] = useState("Active");
@@ -360,6 +372,7 @@ export default function App() {
       category: category || "",
       location: location || "",
       quantity: 1,
+      estimatedValue: 0,
       ...overrides,
     };
   }
@@ -470,6 +483,7 @@ export default function App() {
       "Last Checked In At": item["Last Checked In At"] || "",
       "Last Scan Action": item["Last Scan Action"] || "",
       "Scan Actor": item["Scan Actor"] || "",
+      "Estimated Value": item["Estimated Value"] ?? item.estimatedValue ?? 0,
       localId: item.localId || item.Barcode || item["Readable ID"] || `row-${index}`,
       isLocalOnly: Boolean(item.isLocalOnly),
     }));
@@ -619,6 +633,7 @@ export default function App() {
           "Barcode",
           "Readable ID",
           "Quantity",
+          "Estimated Value",
           "Status",
           "Condition",
           "Notes",
@@ -738,6 +753,7 @@ export default function App() {
       setEditingLocationCode(String(selectedItem["Location Code"] || "").padStart(2, "0"));
       setEditingSerialNumber(selectedItem["Serial Number"] || "");
       setEditingQuantity(selectedItem.Quantity || 1);
+      setEditingEstimatedValue(selectedItem["Estimated Value"] ?? 0);
       setEditingNotes(selectedItem.Notes || "");
       setEditingCondition(selectedItem.Condition || "");
       setEditingStatus(selectedItem.Status || "Active");
@@ -749,6 +765,7 @@ export default function App() {
       setEditingLocationCode("");
       setEditingSerialNumber("");
       setEditingQuantity(1);
+      setEditingEstimatedValue(0);
       setEditingNotes("");
       setEditingCondition("");
       setEditingStatus("Active");
@@ -1139,9 +1156,15 @@ export default function App() {
       }
 
       const count = Number(lineItem.quantity);
+      const estimatedValue = Number(lineItem.estimatedValue || 0);
 
       if (!Number.isInteger(count) || count < 1) {
         alert("Quantity must be a whole number of 1 or more for every line item.");
+        return;
+      }
+
+      if (!Number.isFinite(estimatedValue) || estimatedValue < 0) {
+        alert("Estimated value must be a number of 0 or more for every line item.");
         return;
       }
     }
@@ -1153,6 +1176,7 @@ export default function App() {
       const categoryCode = String(lineItem.category).padStart(2, "0");
       const locationCode = String(lineItem.location).padStart(2, "0");
       const count = Number(lineItem.quantity);
+      const estimatedValue = Number(lineItem.estimatedValue || 0);
 
       for (let i = 0; i < count; i++) {
         const serialNumber = getNextSerialNumber(categoryCode, locationCode, inventoryCopy);
@@ -1171,6 +1195,7 @@ export default function App() {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
+          "Estimated Value": estimatedValue,
           Status: "Needs Labeled",
           Condition: "Good",
           Notes: "",
@@ -1206,6 +1231,7 @@ export default function App() {
     const locationCode = editingLocationCode ? String(editingLocationCode).padStart(2, "0") : "";
     const serialNumber = String(editingSerialNumber || "").trim();
     const quantityValue = Number(editingQuantity);
+    const estimatedValue = Number(editingEstimatedValue || 0);
 
     if (!editingItemName.trim()) {
       alert("Please enter an item name.");
@@ -1227,6 +1253,11 @@ export default function App() {
       return false;
     }
 
+    if (!Number.isFinite(estimatedValue) || estimatedValue < 0) {
+      alert("Estimated value must be a number of 0 or more.");
+      return false;
+    }
+
     const derivedBarcode = buildBarcode(categoryCode, locationCode, serialNumber);
     const derivedReadableId = buildReadableId(categoryCode, locationCode, serialNumber);
 
@@ -1244,6 +1275,7 @@ export default function App() {
         Barcode: derivedBarcode,
         "Readable ID": derivedReadableId,
         Quantity: quantityValue,
+        "Estimated Value": estimatedValue,
         Status: editingStatus,
         Condition: editingCondition,
         Notes: editingNotes,
@@ -1286,6 +1318,7 @@ export default function App() {
           categoryCode: item["Category Code"],
           locationCode: item["Location Code"],
           quantity: item.Quantity || 1,
+          estimatedValue: item["Estimated Value"] || 0,
           status: item.Status || "Active",
           condition: item.Condition || "",
           notes: item.Notes || "",
@@ -1307,6 +1340,7 @@ export default function App() {
             "Barcode",
             "Readable ID",
             "Quantity",
+            "Estimated Value",
             "Status",
             "Condition",
             "Notes",
@@ -1332,6 +1366,7 @@ export default function App() {
           barcode: item.Barcode,
           readableId: item["Readable ID"],
           quantity: item.Quantity || 1,
+          estimatedValue: item["Estimated Value"] || 0,
           status: item.Status,
           condition: item.Condition,
           notes: item.Notes,
@@ -1635,6 +1670,10 @@ export default function App() {
                         <div>
                           <span className="detail-label">Condition</span>
                           <span className="detail-value">{item.Condition || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="detail-label">Est. Value</span>
+                          <span className="detail-value">{formatEstimatedValue(item["Estimated Value"])}</span>
                         </div>
                       </div>
                     </article>
@@ -2175,6 +2214,7 @@ export default function App() {
                 <span>Category</span>
                 <span>Location</span>
                 <span>Qty</span>
+                <span>Est. Value</span>
                 <span>Action</span>
               </div>
 
@@ -2219,6 +2259,14 @@ export default function App() {
                     step="1"
                     value={lineItem.quantity}
                     onChange={(e) => updateAssetLineItem(lineItem.lineId, "quantity", e.target.value)}
+                  />
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={lineItem.estimatedValue}
+                    onChange={(e) => updateAssetLineItem(lineItem.lineId, "estimatedValue", e.target.value)}
                   />
                   <button
                     className="button button-secondary"
@@ -2269,6 +2317,7 @@ export default function App() {
                   <Barcode value={selectedItem.Barcode} label={selectedItem["Readable ID"]} />
                   <div><strong>Category:</strong> {selectedItem["Category Name"]}</div>
                   <div><strong>Location:</strong> {selectedItem["Location Name"]}</div>
+                  <div><strong>Estimated Value:</strong> {formatEstimatedValue(selectedItem["Estimated Value"])}</div>
                   <div><strong>Checked Out To:</strong> {selectedItem["Checked Out To"] || "-"}</div>
                   <div><strong>Checked Out At:</strong> {selectedItem["Checked Out At"] || "-"}</div>
                   <div><strong>Last Checked In At:</strong> {selectedItem["Last Checked In At"] || "-"}</div>
@@ -2352,6 +2401,18 @@ export default function App() {
                       step="1"
                       value={editingQuantity}
                       onChange={(e) => setEditingQuantity(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Estimated Value</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingEstimatedValue}
+                      onChange={(e) => setEditingEstimatedValue(e.target.value)}
                     />
                   </div>
 
