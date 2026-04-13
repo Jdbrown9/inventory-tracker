@@ -751,9 +751,9 @@ button {
 
 .inventory-header {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
   margin-bottom: 14px;
 }
 
@@ -770,20 +770,18 @@ button {
 }
 
 .inventory-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(280px, 1.9fr) repeat(3, minmax(170px, 1fr)) auto auto;
   gap: 8px;
   align-items: stretch;
-  flex-wrap: wrap;
-  width: min(100%, 1120px);
+  width: 100%;
 }
 
 .search-input {
-  flex: 2 1 260px;
   max-width: none;
 }
 
 .filter-input {
-  flex: 1 0 220px;
   min-height: 44px;
   padding-right: 34px;
 }
@@ -960,15 +958,17 @@ button {
   gap: 3px;
 }
 
-.event-log-main .badge {
-  width: fit-content;
-  padding: 3px 6px;
-}
-
 .event-log-main h3 {
   margin: 0;
   color: #10233f;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.event-log-item-name {
+  color: #40506d;
+  font-size: 11px;
+  font-weight: 800;
   line-height: 1.15;
 }
 
@@ -1131,6 +1131,10 @@ button {
   width: min(100%, 1180px);
 }
 
+.scan-name-modal {
+  width: min(100%, 460px);
+}
+
 .asset-line-items {
   display: grid;
   gap: 8px;
@@ -1243,6 +1247,10 @@ button {
     min-height: 0;
   }
 
+  .inventory-tools {
+    grid-template-columns: minmax(260px, 1.4fr) repeat(2, minmax(170px, 1fr));
+  }
+
   .inventory-scroll {
     max-height: 520px;
   }
@@ -1292,12 +1300,15 @@ button {
   }
 
   .inventory-header,
-  .inventory-tools,
   .scanner-modal-header,
   .inventory-action-strip,
   .label-toolbar,
   .scan-mode-toggle-row {
     flex-direction: column;
+  }
+
+  .inventory-tools {
+    grid-template-columns: 1fr;
   }
 
   .label-item-row {

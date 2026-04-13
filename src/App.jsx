@@ -226,6 +226,8 @@ export default function App() {
   const [scanInputValue, setScanInputValue] = useState("");
   const [recentScanLog, setRecentScanLog] = useState([]);
   const [scanModeEnabled, setScanModeEnabled] = useState(false);
+  const [scanNamePromptOpen, setScanNamePromptOpen] = useState(false);
+  const [pendingScanSessionName, setPendingScanSessionName] = useState("");
 
   // Label printing workflow state.
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
@@ -440,6 +442,7 @@ export default function App() {
   function focusUsbScanInput() {
     window.requestAnimationFrame(() => {
       usbScanInputRef.current?.focus();
+      usbScanInputRef.current?.select();
     });
   }
 
@@ -850,18 +853,36 @@ export default function App() {
   }
 
   function handleScanModeToggle() {
-    setScanModeEnabled((currentValue) => {
-      const nextValue = !currentValue;
+    if (scanModeEnabled) {
+      setScannerOpen(false);
+      setScanModeEnabled(false);
+      setScanNamePromptOpen(false);
+      setScannerStatus("Scan mode disabled.");
+      return;
+    }
 
-      if (!nextValue) {
-        setScannerOpen(false);
-        setScannerStatus("Scan mode disabled.");
-      } else {
-        setScannerStatus("Scan mode enabled. Ready to scan.");
-      }
+    openScanModeNamePrompt();
+  }
 
-      return nextValue;
-    });
+  function openScanModeNamePrompt() {
+    setActiveTab("scan");
+    setPendingScanSessionName(scanSessionName || "");
+    setScanNamePromptOpen(true);
+  }
+
+  function startScanModeWithName(event) {
+    event.preventDefault();
+
+    if (!pendingScanSessionName) {
+      setScannerStatus("Select your name to start scan mode.");
+      return;
+    }
+
+    setScanSessionName(pendingScanSessionName);
+    setScanModeEnabled(true);
+    setScanNamePromptOpen(false);
+    setScannerStatus("Scan mode enabled. Ready to scan.");
+    focusUsbScanInput();
   }
 
   function openAssetEditor(itemId) {
@@ -1243,7 +1264,6 @@ export default function App() {
       <header className="brand-banner">
         <div className="brand-banner-top">
           <div>
-            <p className="eyebrow">Allen County War Memorial Coliseum</p>
             <img
               src={`${import.meta.env.BASE_URL}assets/header_logo.svg`}
               alt="Allen County War Memorial Coliseum"
@@ -1394,10 +1414,7 @@ export default function App() {
                 </button>
                 <button
                   className="button button-dark scan-button"
-                  onClick={() => {
-                    setActiveTab("scan");
-                    setScanModeEnabled(true);
-                  }}
+                  onClick={openScanModeNamePrompt}
                 >
                   Open Scan Mode
                 </button>
@@ -1616,8 +1633,8 @@ export default function App() {
                 eventLog.map((entry) => (
                   <article className="event-log-item" key={`${entry.rowNumber}-${entry.timestamp}`}>
                     <div className="event-log-main">
-                      <span className="badge badge-status">{entry.eventType || "Inventory Event"}</span>
-                      <h3>{entry.itemName || "Inventory item"}</h3>
+                      <h3>{entry.eventType || "Inventory Event"}</h3>
+                      <span className="event-log-item-name">{entry.itemName || "Inventory item"}</span>
                       <p>{entry.details || "Inventory activity was recorded."}</p>
                     </div>
 
@@ -2165,6 +2182,46 @@ export default function App() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Scan mode name prompt */}
+      {scanNamePromptOpen && (
+        <div className="scanner-modal-overlay" onClick={() => setScanNamePromptOpen(false)}>
+          <form className="scanner-modal scan-name-modal" onSubmit={startScanModeWithName} onClick={(e) => e.stopPropagation()}>
+            <div className="scanner-modal-header">
+              <div>
+                <p className="panel-kicker">Scan Mode</p>
+                <h2>Select Your Name</h2>
+                <p>Choose who is checking items out, then start scanning.</p>
+              </div>
+
+              <button className="button button-secondary scanner-close" type="button" onClick={() => setScanNamePromptOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Checkout Name</label>
+              <select
+                className="input"
+                value={pendingScanSessionName}
+                onChange={(e) => setPendingScanSessionName(e.target.value)}
+                autoFocus
+              >
+                <option value="">Select checkout name</option>
+                {CHECKOUT_NAMES.map((checkoutName) => (
+                  <option key={checkoutName} value={checkoutName}>
+                    {checkoutName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button className="button button-dark button-full" type="submit">
+              Start Scanning
+            </button>
+          </form>
         </div>
       )}
 
