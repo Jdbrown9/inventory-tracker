@@ -30,6 +30,10 @@ function doGet(e) {
     return jsonResponse(getEventLog());
   }
 
+  if (action === "testEventLog") {
+    return jsonResponse(testEventLog());
+  }
+
   if (action === "getAppData") {
     return jsonResponse({
       success: true,
@@ -177,6 +181,23 @@ function appendEventLog(entry) {
     entry.actor || "",
     entry.details || "",
   ]);
+
+  return sheet.getLastRow();
+}
+
+function testEventLog() {
+  const rowNumber = appendEventLog({
+    timestamp: new Date(),
+    eventType: "Test",
+    itemName: "Event Log Test",
+    details: "Manual event log test from Apps Script",
+  });
+
+  return {
+    success: true,
+    message: "Test event logged",
+    rowNumber,
+  };
 }
 
 function getLookupSheet(sheetName) {
@@ -402,17 +423,30 @@ function updateItem(payload, options) {
 
 function buildUpdatedItemEvent(payload, before, after, timestamp) {
   const scanAction = String(payload.lastScanAction || "").trim();
-  const eventType = scanAction || "Updated";
+  const beforeStatus = String(before.status || "").trim();
+  const afterStatus = String(after.status || "").trim();
   const checkedOutTo = payload.checkedOutTo ?? "";
+
+  let eventType = scanAction;
+  if (!eventType && beforeStatus !== "Checked Out" && afterStatus === "Checked Out") {
+    eventType = "Checked Out";
+  } else if (!eventType && beforeStatus === "Checked Out" && afterStatus !== "Checked Out") {
+    eventType = "Checked In";
+  } else if (!eventType && beforeStatus !== afterStatus) {
+    eventType = "Status Changed";
+  } else if (!eventType) {
+    eventType = "Updated";
+  }
+
   const actor = checkedOutTo || before.checkedOutTo || "";
 
   let details = "Item details updated";
   if (eventType === "Checked Out") {
-    details = `Checked out to ${checkedOutTo || "unassigned"}`;
+    details = checkedOutTo ? `To ${checkedOutTo}` : "Checked out";
   } else if (eventType === "Checked In") {
-    details = "Item checked in";
-  } else if (String(before.status || "") !== String(after.status || "")) {
-    details = `Status changed from ${before.status || "blank"} to ${after.status || "blank"}`;
+    details = "Checked in";
+  } else if (eventType === "Status Changed") {
+    details = `From ${beforeStatus || "blank"} to ${afterStatus || "blank"}`;
   }
 
   return {
@@ -435,11 +469,12 @@ function publishChanges(payload) {
   const results = {
     added: 0,
     updated: 0,
+    logged: 0,
   };
 
   newItems.forEach((item) => {
     const result = addItem(item, { skipEventLog: true });
-    appendEventLog({
+    const loggedRow = appendEventLog({
       timestamp: new Date(),
       eventType: "Created",
       itemName: result.item.itemName,
@@ -448,12 +483,14 @@ function publishChanges(payload) {
       status: result.item.status,
       details: "New item added",
     });
+    if (loggedRow) results.logged += 1;
     results.added += 1;
   });
 
   updatedItems.forEach((item) => {
     const result = updateItem(item, { skipEventLog: true });
-    appendEventLog(buildUpdatedItemEvent(item, result.before, result.item, new Date()));
+    const loggedRow = appendEventLog(buildUpdatedItemEvent(item, result.before, result.item, new Date()));
+    if (loggedRow) results.logged += 1;
     results.updated += 1;
   });
 

@@ -941,58 +941,63 @@ button {
 
 .event-log-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .event-log-item {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(320px, 1.4fr);
-  gap: 14px;
-  padding: 14px;
+  grid-template-columns: minmax(220px, 1fr) minmax(420px, 1.7fr);
+  gap: 10px;
+  padding: 8px 10px;
   border: 1px solid #dbe4f0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #fcfdff;
 }
 
 .event-log-main {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 3px;
 }
 
 .event-log-main .badge {
   width: fit-content;
+  padding: 3px 6px;
 }
 
 .event-log-main h3 {
   margin: 0;
   color: #10233f;
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1.15;
 }
 
 .event-log-main p {
   margin: 0;
   color: #66748f;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .event-log-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1.25fr repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
 }
 
 .event-log-meta span {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   color: #23304c;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.15;
 }
 
 .event-log-meta strong {
   color: #74839d;
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: 8px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
