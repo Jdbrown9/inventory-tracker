@@ -185,6 +185,7 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [eventLog, setEventLog] = useState([]);
+  const [eventTypeFilter, setEventTypeFilter] = useState("");
 
   // Asset intake form values.
   const [name, setName] = useState("");
@@ -642,6 +643,18 @@ export default function App() {
   const labelPreviewPages = useMemo(() => {
     return mapSelectedItemsToPageSlots(selectedLabelItems, labelLayout);
   }, [selectedLabelItems, labelLayout]);
+
+  const eventLogTypes = useMemo(() => {
+    return Array.from(
+      new Set(eventLog.map((entry) => entry.eventType).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [eventLog]);
+
+  const filteredEventLog = useMemo(() => {
+    if (!eventTypeFilter) return eventLog;
+
+    return eventLog.filter((entry) => entry.eventType === eventTypeFilter);
+  }, [eventLog, eventTypeFilter]);
 
   // Mirrors the selected row into editable field state.
   useEffect(() => {
@@ -1670,13 +1683,40 @@ export default function App() {
               <p>Published activity from the master inventory sheet.</p>
             </div>
 
+            <div className="event-log-toolbar">
+              <select
+                className="input event-log-filter"
+                value={eventTypeFilter}
+                onChange={(e) => setEventTypeFilter(e.target.value)}
+                disabled={loadingApp || eventLogTypes.length === 0}
+              >
+                <option value="">All log types</option>
+                {eventLogTypes.map((eventType) => (
+                  <option key={eventType} value={eventType}>
+                    {eventType}
+                  </option>
+                ))}
+              </select>
+              {eventTypeFilter && (
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  onClick={() => setEventTypeFilter("")}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
             <div className="event-log-list">
               {loadingApp ? (
                 <div className="empty-state">Loading event log...</div>
               ) : eventLog.length === 0 ? (
                 <div className="empty-state">No published inventory events yet.</div>
+              ) : filteredEventLog.length === 0 ? (
+                <div className="empty-state">No event log entries matched that type.</div>
               ) : (
-                eventLog.map((entry) => (
+                filteredEventLog.map((entry) => (
                   <article className="event-log-item" key={`${entry.rowNumber}-${entry.timestamp}`}>
                     <div className="event-log-main">
                       <h3>{entry.eventType || "Inventory Event"}</h3>

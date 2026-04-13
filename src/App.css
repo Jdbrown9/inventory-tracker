@@ -942,6 +942,18 @@ button {
   min-height: 68vh;
 }
 
+.event-log-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.event-log-filter {
+  width: min(100%, 260px);
+}
+
 .event-log-list {
   display: grid;
   gap: 6px;
