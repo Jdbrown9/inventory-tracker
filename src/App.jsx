@@ -31,6 +31,8 @@ const DEFAULT_LABEL_OPTIONS = {
   showPropertyText: false,
 };
 
+const DEFAULT_PROPERTY_NOTICE = "Property of Allen County War Memorial Coliseum";
+
 const DEFAULT_LABEL_STYLES = {
   barcodeHeight: 42,
   barcodeWidth: 2,
@@ -244,10 +246,12 @@ export default function App() {
 
   // Label printing workflow state.
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
+  const [labelStatusFilter, setLabelStatusFilter] = useState("");
   const [selectedLabelItemIds, setSelectedLabelItemIds] = useState([]);
   const [labelLayout, setLabelLayout] = useState(DEFAULT_LABEL_LAYOUT);
   const [labelOptions, setLabelOptions] = useState(DEFAULT_LABEL_OPTIONS);
   const [labelStyles, setLabelStyles] = useState(DEFAULT_LABEL_STYLES);
+  const [propertyNoticeText, setPropertyNoticeText] = useState(DEFAULT_PROPERTY_NOTICE);
   const [labelTemplateFileName, setLabelTemplateFileName] = useState("");
   const [labelTemplateStatus, setLabelTemplateStatus] = useState("");
   const [labelTemplateError, setLabelTemplateError] = useState("");
@@ -630,21 +634,26 @@ export default function App() {
   const filteredLabelInventory = useMemo(() => {
     const term = labelSearchTerm.trim().toLowerCase();
 
-    if (!term) return workingInventory;
+    return workingInventory.filter((item) => {
+      const matchesSearch =
+        !term ||
+        [
+          item["Item Name"],
+          item["Readable ID"],
+          item.Barcode,
+          item["Category Name"],
+          item["Location Name"],
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      const matchesStatus =
+        !labelStatusFilter ||
+        String(item.Status || "").trim().toLowerCase() === String(labelStatusFilter).trim().toLowerCase();
 
-    return workingInventory.filter((item) =>
-      [
-        item["Item Name"],
-        item["Readable ID"],
-        item.Barcode,
-        item["Category Name"],
-        item["Location Name"],
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(term)
-    );
-  }, [workingInventory, labelSearchTerm]);
+      return matchesSearch && matchesStatus;
+    });
+  }, [workingInventory, labelSearchTerm, labelStatusFilter]);
 
   const selectedLabelItems = useMemo(() => {
     const selectedIds = new Set(selectedLabelItemIds);
@@ -1792,6 +1801,18 @@ export default function App() {
                 value={labelSearchTerm}
                 onChange={(e) => setLabelSearchTerm(e.target.value)}
               />
+              <select
+                className="input label-status-filter"
+                value={labelStatusFilter}
+                onChange={(e) => setLabelStatusFilter(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                <option value="Needs Labeled">Needs Labeled</option>
+                <option value="Active">Active</option>
+                <option value="Checked Out">Checked Out</option>
+                <option value="Missing">Missing</option>
+                <option value="Retired">Retired</option>
+              </select>
               <button className="button button-secondary" type="button" onClick={selectAllFilteredLabelItems}>
                 Select All Filtered
               </button>
@@ -1803,6 +1824,18 @@ export default function App() {
               >
                 Clear Selection
               </button>
+              {(labelSearchTerm || labelStatusFilter) && (
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  onClick={() => {
+                    setLabelSearchTerm("");
+                    setLabelStatusFilter("");
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
               <span className="selected-count-card">{selectedLabelItemIds.length} selected</span>
             </div>
 
@@ -1921,6 +1954,16 @@ export default function App() {
                 ))}
               </div>
 
+              <div className="form-group label-property-notice-field">
+                <label>Property Notice</label>
+                <input
+                  className="input"
+                  value={propertyNoticeText}
+                  onChange={(e) => setPropertyNoticeText(e.target.value)}
+                  placeholder={DEFAULT_PROPERTY_NOTICE}
+                />
+              </div>
+
               <div className="label-style-controls">
                 {[
                   ["barcodeHeight", "Barcode Height", 10, 1],
@@ -2030,7 +2073,7 @@ export default function App() {
                                 className="preview-label-property"
                                 style={{ fontSize: `${Number(labelStyles.propertyFontSize) || 7}px` }}
                               >
-                                Property of Allen County War Memorial Coliseum
+                                {propertyNoticeText || DEFAULT_PROPERTY_NOTICE}
                               </span>
                             )}
                           </>

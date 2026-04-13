@@ -475,6 +475,10 @@ button {
   flex: 1 1 260px;
 }
 
+.label-toolbar .label-status-filter {
+  flex: 0 1 190px;
+}
+
 .selected-count-card {
   display: inline-flex;
   align-items: center;
@@ -578,6 +582,10 @@ button {
 .label-option-list {
   display: grid;
   gap: 8px;
+}
+
+.label-property-notice-field {
+  margin-top: 12px;
 }
 
 .label-option {
