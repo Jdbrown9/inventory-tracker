@@ -228,6 +228,7 @@ export default function App() {
   const [scanModeEnabled, setScanModeEnabled] = useState(false);
   const [scanNamePromptOpen, setScanNamePromptOpen] = useState(false);
   const [pendingScanSessionName, setPendingScanSessionName] = useState("");
+  const [scanAction, setScanAction] = useState("checkout");
 
   // Label printing workflow state.
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
@@ -794,6 +795,28 @@ export default function App() {
       return;
     }
 
+    if (scanAction === "markActive") {
+      const now = new Date().toISOString();
+      const nextItemState = {
+        Status: "Active",
+        "Checked Out To": "",
+        "Checked Out At": "",
+        "Last Scan Action": "Marked Active",
+        "Last Updated": now,
+      };
+      const updatedInventory = workingInventory.map((item) =>
+        item.localId === matchedItem.localId ? { ...item, ...nextItemState } : item
+      );
+      const message = `${matchedItem["Item Name"]} marked active.`;
+
+      setWorkingInventory(updatedInventory);
+      setSelectedItemId(matchedItem.localId);
+      setSearchTerm(normalizedBarcode);
+      setScannerStatus(message);
+      appendScanLog(message, "success");
+      return;
+    }
+
     if (String(matchedItem.Status || "").trim() !== "Checked Out" && !scanSessionName.trim()) {
       const message = `Scan blocked for ${matchedItem["Item Name"]}. Enter a checkout name first.`;
       setSelectedItemId(matchedItem.localId);
@@ -1041,7 +1064,7 @@ export default function App() {
           Barcode: barcode,
           "Readable ID": readableId,
           Quantity: 1,
-          Status: "Active",
+          Status: "Needs Labeled",
           Condition: "Good",
           Notes: "",
           "Checked Out To": "",
@@ -1387,6 +1410,7 @@ export default function App() {
                   disabled={loadingApp}
                 >
                   <option value="">All statuses</option>
+                  <option value="Needs Labeled">Needs Labeled</option>
                   <option value="Active">Active</option>
                   <option value="Checked Out">Checked Out</option>
                   <option value="Missing">Missing</option>
@@ -1542,12 +1566,25 @@ export default function App() {
             </div>
 
             <div className="form-group">
+              <label>Scan Action</label>
+              <select
+                className="input"
+                value={scanAction}
+                onChange={(e) => setScanAction(e.target.value)}
+                disabled={!scanModeEnabled}
+              >
+                <option value="checkout">Check In / Check Out</option>
+                <option value="markActive">Mark Active</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label>Checkout Name</label>
               <select
                 className="input"
                 value={scanSessionName}
                 onChange={(e) => setScanSessionName(e.target.value)}
-                disabled={!scanModeEnabled}
+                disabled={!scanModeEnabled || scanAction === "markActive"}
               >
                 <option value="">Select checkout name</option>
                 {CHECKOUT_NAMES.map((checkoutName) => (
@@ -2052,6 +2089,7 @@ export default function App() {
                       onChange={(e) => setEditingStatus(e.target.value)}
                     >
                       <option value="Active">Active</option>
+                      <option value="Needs Labeled">Needs Labeled</option>
                       <option value="Checked Out">Checked Out</option>
                       <option value="Missing">Missing</option>
                       <option value="Retired">Retired</option>
@@ -2163,6 +2201,7 @@ export default function App() {
                       <option value="">None</option>
                       <option value="Checked In">Checked In</option>
                       <option value="Checked Out">Checked Out</option>
+                      <option value="Marked Active">Marked Active</option>
                     </select>
                   </div>
                 </div>

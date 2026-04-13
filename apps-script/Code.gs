@@ -10,6 +10,19 @@ const EVENT_LOG_HEADERS = [
   "Actor",
   "Details",
 ];
+const NOTIFICATION_LOG_SHEET_NAME = "Notification Log";
+const NOTIFICATION_LOG_HEADERS = [
+  "Timestamp",
+  "Notification Type",
+  "Notification Key",
+  "Item Name",
+  "Readable ID",
+  "Barcode",
+  "Recipient",
+  "Details",
+];
+const NOTIFICATION_RECIPIENTS = ["JBrown@memorialcoliseum.com"];
+const OVERDUE_CHECKOUT_DAYS = 7;
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || "";
@@ -32,6 +45,18 @@ function doGet(e) {
 
   if (action === "testEventLog") {
     return jsonResponse(testEventLog());
+  }
+
+  if (action === "testEmail") {
+    return jsonResponse(sendTestEmail(e.parameter || {}));
+  }
+
+  if (action === "checkOverdueCheckouts") {
+    return jsonResponse(checkOverdueCheckouts());
+  }
+
+  if (action === "installOverdueCheckoutTrigger") {
+    return jsonResponse(installOverdueCheckoutTrigger());
   }
 
   if (action === "getAppData") {
@@ -200,6 +225,238 @@ function testEventLog() {
   };
 }
 
+function getNotificationRecipients(overrideEmail) {
+  if (overrideEmail) {
+    return String(overrideEmail)
+      .split(",")
+      .map((email) => email.trim())
+      .filter(Boolean);
+  }
+
+  return NOTIFICATION_RECIPIENTS.map((email) => String(email || "").trim()).filter(Boolean);
+}
+
+function sendTestEmail(params) {
+  const recipients = getNotificationRecipients(params && params.email);
+  if (recipients.length === 0) {
+    throw new Error("No notification recipients are configured.");
+  }
+
+  const now = new Date();
+  const quotaBefore = MailApp.getRemainingDailyQuota();
+
+  MailApp.sendEmail({
+    to: recipients.join(","),
+    subject: `Inventory Tracker Test Email - ${now.toLocaleString()}`,
+    body: [
+      "This is a test email from the AV Inventory Tracker.",
+      "",
+      "If you received this, Apps Script email notifications are working.",
+      "",
+      `Sent at: ${now.toLocaleString()}`,
+    ].join("\n"),
+  });
+
+  const logRowNumber = appendNotificationLog({
+    timestamp: now,
+    notificationType: "Test Email",
+    notificationKey: `test-email|${now.toISOString()}`,
+    itemName: "Inventory Tracker",
+    recipient: recipients.join(","),
+    details: `Test email requested. Remaining daily quota before send: ${quotaBefore}`,
+  });
+
+  return {
+    success: true,
+    message: "Test email sent",
+    recipients,
+    quotaBefore,
+    quotaAfter: MailApp.getRemainingDailyQuota(),
+    logRowNumber,
+  };
+}
+
+function appendNotificationLog(entry) {
+  const sheet = getOrCreateSheet(NOTIFICATION_LOG_SHEET_NAME, NOTIFICATION_LOG_HEADERS);
+
+  sheet.appendRow([
+    entry.timestamp || new Date(),
+    entry.notificationType || "",
+    entry.notificationKey || "",
+    entry.itemName || "",
+    entry.readableId || "",
+    entry.barcode || "",
+    entry.recipient || "",
+    entry.details || "",
+  ]);
+
+  return sheet.getLastRow();
+}
+
+function getSentNotificationKeys() {
+  const sheet = getOrCreateSheet(NOTIFICATION_LOG_SHEET_NAME, NOTIFICATION_LOG_HEADERS);
+  const values = sheet.getDataRange().getValues();
+
+  if (values.length < 2) return {};
+
+  const headers = values[0];
+  const keyIndex = headers.indexOf("Notification Key");
+  const sent = {};
+
+  if (keyIndex === -1) return sent;
+
+  values.slice(1).forEach((row) => {
+    const key = String(row[keyIndex] || "").trim();
+    if (key) sent[key] = true;
+  });
+
+  return sent;
+}
+
+function parseEventDate(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function getLatestCheckoutInfo(item, eventLog) {
+  const barcode = String(item.Barcode || "").trim();
+  const readableId = String(item["Readable ID"] || "").trim();
+  const checkedOutAt = parseEventDate(item["Checked Out At"]);
+
+  if (checkedOutAt) {
+    return {
+      checkedOutAt,
+      checkedOutTo: item["Checked Out To"] || "",
+    };
+  }
+
+  const latestCheckout = eventLog.find((entry) => {
+    const eventType = String(entry["Event Type"] || "").trim();
+    const eventBarcode = String(entry.Barcode || "").trim();
+    const eventReadableId = String(entry["Readable ID"] || "").trim();
+
+    return (
+      eventType === "Checked Out" &&
+      ((barcode && eventBarcode === barcode) || (readableId && eventReadableId === readableId))
+    );
+  });
+
+  if (!latestCheckout) return null;
+
+  return {
+    checkedOutAt: parseEventDate(latestCheckout.Timestamp),
+    checkedOutTo: latestCheckout["Checked Out To"] || latestCheckout.Actor || "",
+  };
+}
+
+function buildOverdueNotificationKey(item, checkedOutAt) {
+  const itemKey = item.Barcode || item["Readable ID"] || item["Item Name"] || "unknown-item";
+  return `overdue-checkout|${itemKey}|${checkedOutAt.toISOString()}`;
+}
+
+function checkOverdueCheckouts() {
+  const recipients = getNotificationRecipients();
+  if (recipients.length === 0) {
+    throw new Error("No notification recipients are configured.");
+  }
+
+  const inventory = getInventory().data || [];
+  const eventLog = getEventLog().data || [];
+  const sentKeys = getSentNotificationKeys();
+  const now = new Date();
+  const overdueItems = [];
+
+  inventory.forEach((item) => {
+    if (String(item.Status || "").trim() !== "Checked Out") return;
+
+    const checkoutInfo = getLatestCheckoutInfo(item, eventLog);
+    if (!checkoutInfo || !checkoutInfo.checkedOutAt) return;
+
+    const ageInDays = Math.floor((now.getTime() - checkoutInfo.checkedOutAt.getTime()) / (1000 * 60 * 60 * 24));
+    if (ageInDays < OVERDUE_CHECKOUT_DAYS) return;
+
+    const notificationKey = buildOverdueNotificationKey(item, checkoutInfo.checkedOutAt);
+    if (sentKeys[notificationKey]) return;
+
+    overdueItems.push({
+      item,
+      checkedOutAt: checkoutInfo.checkedOutAt,
+      checkedOutTo: checkoutInfo.checkedOutTo,
+      ageInDays,
+      notificationKey,
+    });
+  });
+
+  if (overdueItems.length === 0) {
+    return {
+      success: true,
+      message: "No overdue checked-out items found.",
+      notified: 0,
+      checked: inventory.length,
+    };
+  }
+
+  const lines = overdueItems.map(({ item, checkedOutAt, checkedOutTo, ageInDays }) =>
+    [
+      `${item["Item Name"] || "Inventory item"} has been checked out for ${ageInDays} days.`,
+      `Readable ID: ${item["Readable ID"] || "-"}`,
+      `Barcode: ${item.Barcode || "-"}`,
+      `Checked out to: ${checkedOutTo || item["Checked Out To"] || "-"}`,
+      `Checked out at: ${checkedOutAt.toLocaleString()}`,
+    ].join("\n")
+  );
+
+  MailApp.sendEmail({
+    to: recipients.join(","),
+    subject: `Inventory Alert: ${overdueItems.length} overdue checkout${overdueItems.length === 1 ? "" : "s"}`,
+    body: [
+      `The following item${overdueItems.length === 1 ? " has" : "s have"} been checked out for ${OVERDUE_CHECKOUT_DAYS}+ days:`,
+      "",
+      lines.join("\n\n---\n\n"),
+    ].join("\n"),
+  });
+
+  overdueItems.forEach(({ item, checkedOutAt, checkedOutTo, notificationKey, ageInDays }) => {
+    appendNotificationLog({
+      timestamp: now,
+      notificationType: "Overdue Checkout",
+      notificationKey,
+      itemName: item["Item Name"],
+      readableId: item["Readable ID"],
+      barcode: item.Barcode,
+      recipient: recipients.join(","),
+      details: `Checked out to ${checkedOutTo || item["Checked Out To"] || "-"} for ${ageInDays} days since ${checkedOutAt.toISOString()}`,
+    });
+  });
+
+  return {
+    success: true,
+    message: "Overdue checkout email sent.",
+    notified: overdueItems.length,
+    recipients,
+  };
+}
+
+function installOverdueCheckoutTrigger() {
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (trigger.getHandlerFunction() === "checkOverdueCheckouts") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger("checkOverdueCheckouts")
+    .timeBased()
+    .everyDays(1)
+    .atHour(8)
+    .create();
+
+  return {
+    success: true,
+    message: "Daily overdue checkout trigger installed for 8 AM.",
+  };
+}
+
 function getLookupSheet(sheetName) {
   const sheet = getSheet(sheetName);
   const values = sheet.getDataRange().getValues();
@@ -300,7 +557,7 @@ function addItem(payload, options) {
     barcode,
     readableId,
     Number(payload.quantity || 1),
-    payload.status || "Active",
+    payload.status || "Needs Labeled",
     payload.condition || "",
     payload.notes || "",
     Number(payload.estimatedValue || 0),
@@ -318,7 +575,7 @@ function addItem(payload, options) {
     barcode,
     readableId,
     quantity: Number(payload.quantity || 1),
-    status: payload.status || "Active",
+    status: payload.status || "Needs Labeled",
     condition: payload.condition || "",
     notes: payload.notes || "",
     estimatedValue: Number(payload.estimatedValue || 0),
@@ -445,6 +702,8 @@ function buildUpdatedItemEvent(payload, before, after, timestamp) {
     details = checkedOutTo ? `To ${checkedOutTo}` : "Checked out";
   } else if (eventType === "Checked In") {
     details = "Checked in";
+  } else if (eventType === "Marked Active") {
+    details = "Marked active";
   } else if (eventType === "Status Changed") {
     details = `From ${beforeStatus || "blank"} to ${afterStatus || "blank"}`;
   }

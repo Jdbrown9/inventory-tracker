@@ -918,6 +918,11 @@ button {
   color: #0f7a4f;
 }
 
+.status-needs-labeled {
+  background: #fff7df;
+  color: #8a6200;
+}
+
 .status-missing {
   background: #fff0d8;
   color: #a46200;
