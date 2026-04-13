@@ -229,6 +229,7 @@ export default function App() {
   const [scanNamePromptOpen, setScanNamePromptOpen] = useState(false);
   const [pendingScanSessionName, setPendingScanSessionName] = useState("");
   const [scanAction, setScanAction] = useState("checkout");
+  const [pendingScanAction, setPendingScanAction] = useState("checkout");
 
   // Label printing workflow state.
   const [labelSearchTerm, setLabelSearchTerm] = useState("");
@@ -408,6 +409,7 @@ export default function App() {
       "Checked Out At": item["Checked Out At"] || "",
       "Last Checked In At": item["Last Checked In At"] || "",
       "Last Scan Action": item["Last Scan Action"] || "",
+      "Scan Actor": item["Scan Actor"] || "",
       localId: item.localId || item.Barcode || item["Readable ID"] || `row-${index}`,
       isLocalOnly: Boolean(item.isLocalOnly),
     }));
@@ -795,6 +797,15 @@ export default function App() {
       return;
     }
 
+    if (!scanSessionName.trim()) {
+      const message = `Scan blocked for ${matchedItem["Item Name"]}. Select your name first.`;
+      setSelectedItemId(matchedItem.localId);
+      setSearchTerm(normalizedBarcode);
+      setScannerStatus(message);
+      appendScanLog(message, "warning");
+      return;
+    }
+
     if (scanAction === "markActive") {
       const now = new Date().toISOString();
       const nextItemState = {
@@ -802,6 +813,7 @@ export default function App() {
         "Checked Out To": "",
         "Checked Out At": "",
         "Last Scan Action": "Marked Active",
+        "Scan Actor": scanSessionName.trim(),
         "Last Updated": now,
       };
       const updatedInventory = workingInventory.map((item) =>
@@ -817,15 +829,6 @@ export default function App() {
       return;
     }
 
-    if (String(matchedItem.Status || "").trim() !== "Checked Out" && !scanSessionName.trim()) {
-      const message = `Scan blocked for ${matchedItem["Item Name"]}. Enter a checkout name first.`;
-      setSelectedItemId(matchedItem.localId);
-      setSearchTerm(normalizedBarcode);
-      setScannerStatus(message);
-      appendScanLog(message, "warning");
-      return;
-    }
-
     const now = new Date().toISOString();
     const nextItemState =
       String(matchedItem.Status || "").trim() === "Checked Out"
@@ -835,6 +838,7 @@ export default function App() {
             "Checked Out At": "",
             "Last Checked In At": now,
             "Last Scan Action": "Checked In",
+            "Scan Actor": scanSessionName.trim(),
             "Last Updated": now,
           }
         : {
@@ -842,6 +846,7 @@ export default function App() {
             "Checked Out To": scanSessionName.trim(),
             "Checked Out At": now,
             "Last Scan Action": "Checked Out",
+            "Scan Actor": scanSessionName.trim(),
             "Last Updated": now,
           };
 
@@ -890,6 +895,7 @@ export default function App() {
   function openScanModeNamePrompt() {
     setActiveTab("scan");
     setPendingScanSessionName(scanSessionName || "");
+    setPendingScanAction(scanAction);
     setScanNamePromptOpen(true);
   }
 
@@ -902,6 +908,7 @@ export default function App() {
     }
 
     setScanSessionName(pendingScanSessionName);
+    setScanAction(pendingScanAction);
     setScanModeEnabled(true);
     setScanNamePromptOpen(false);
     setScannerStatus("Scan mode enabled. Ready to scan.");
@@ -1209,6 +1216,7 @@ export default function App() {
             "Checked Out At",
             "Last Checked In At",
             "Last Scan Action",
+            "Scan Actor",
           ];
 
           return fieldsToCheck.some(
@@ -1233,6 +1241,7 @@ export default function App() {
           checkedOutAt: item["Checked Out At"],
           lastCheckedInAt: item["Last Checked In At"],
           lastScanAction: item["Last Scan Action"],
+          scanActor: item["Scan Actor"],
         }));
 
       const res = await fetch(API, {
@@ -1579,14 +1588,14 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>Checkout Name</label>
+              <label>Actor</label>
               <select
                 className="input"
                 value={scanSessionName}
                 onChange={(e) => setScanSessionName(e.target.value)}
-                disabled={!scanModeEnabled || scanAction === "markActive"}
+                disabled={!scanModeEnabled}
               >
-                <option value="">Select checkout name</option>
+                <option value="">Select your name</option>
                 {CHECKOUT_NAMES.map((checkoutName) => (
                   <option key={checkoutName} value={checkoutName}>
                     {checkoutName}
@@ -2231,8 +2240,8 @@ export default function App() {
             <div className="scanner-modal-header">
               <div>
                 <p className="panel-kicker">Scan Mode</p>
-                <h2>Select Your Name</h2>
-                <p>Choose who is checking items out, then start scanning.</p>
+                <h2>Start Scan Session</h2>
+                <p>Choose who is scanning and what this scan session should do.</p>
               </div>
 
               <button className="button button-secondary scanner-close" type="button" onClick={() => setScanNamePromptOpen(false)}>
@@ -2241,19 +2250,31 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>Checkout Name</label>
+              <label>Actor</label>
               <select
                 className="input"
                 value={pendingScanSessionName}
                 onChange={(e) => setPendingScanSessionName(e.target.value)}
                 autoFocus
               >
-                <option value="">Select checkout name</option>
+                <option value="">Select your name</option>
                 {CHECKOUT_NAMES.map((checkoutName) => (
                   <option key={checkoutName} value={checkoutName}>
                     {checkoutName}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Scan Action</label>
+              <select
+                className="input"
+                value={pendingScanAction}
+                onChange={(e) => setPendingScanAction(e.target.value)}
+              >
+                <option value="checkout">Check In / Check Out</option>
+                <option value="markActive">Mark Active</option>
               </select>
             </div>
 

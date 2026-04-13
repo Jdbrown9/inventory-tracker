@@ -695,7 +695,7 @@ function buildUpdatedItemEvent(payload, before, after, timestamp) {
     eventType = "Updated";
   }
 
-  const actor = checkedOutTo || before.checkedOutTo || "";
+  const actor = payload.scanActor || checkedOutTo || before.checkedOutTo || "";
 
   let details = "Item details updated";
   if (eventType === "Checked Out") {
