@@ -1967,13 +1967,10 @@ export default function App() {
                               />
                             )}
                             {labelOptions.showReadableId && (
-      <strong
-        className="preview-label-id" style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}
-        style={{ fontSize: `${Number(labelStyles.readableIdFontSize) || 9}px` }}
-      >
-        {slot.item["Readable ID"] || slot.item.Barcode}
-      </strong>
-    )}
+                              <strong className="preview-label-id">
+                                {slot.item["Readable ID"] || slot.item.Barcode}
+                              </strong>
+                            )}
                             {labelOptions.showLocation && (
                               <span className="preview-label-location">{slot.item["Location Name"]}</span>
                             )}
